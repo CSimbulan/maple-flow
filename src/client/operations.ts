@@ -25,6 +25,7 @@ export const CardFields = graphql(`
     tags {
       ...TagFields
     }
+    priority
     dueDate
     position
     listId
@@ -246,8 +247,24 @@ export const ArchiveListMutation = graphql(`
 `);
 
 export const CreateCardMutation = graphql(`
-  mutation CreateCard($listId: ID!, $title: String!) {
-    createCard(listId: $listId, title: $title) {
+  mutation CreateCard(
+    $listId: ID!
+    $title: String!
+    $description: String
+    $tagIds: [ID!]
+    $dueDate: String
+    $priority: Priority
+    $assigneeIds: [ID!]
+  ) {
+    createCard(
+      listId: $listId
+      title: $title
+      description: $description
+      tagIds: $tagIds
+      dueDate: $dueDate
+      priority: $priority
+      assigneeIds: $assigneeIds
+    ) {
       id
       cards {
         ...CardFields
@@ -263,6 +280,7 @@ export const UpdateCardMutation = graphql(`
     $description: String
     $tagIds: [ID!]
     $dueDate: String
+    $priority: Priority
     $assigneeIds: [ID!]
   ) {
     updateCard(
@@ -271,6 +289,7 @@ export const UpdateCardMutation = graphql(`
       description: $description
       tagIds: $tagIds
       dueDate: $dueDate
+      priority: $priority
       assigneeIds: $assigneeIds
     ) {
       ...CardFields

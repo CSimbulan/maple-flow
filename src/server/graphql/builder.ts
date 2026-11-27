@@ -8,6 +8,7 @@ import type {
   TagDoc,
   UserDoc,
 } from "../db/models";
+import { PRIORITIES } from "../../lib/priority";
 import type { Context } from "./context";
 
 /**
@@ -36,6 +37,10 @@ export function createBuilder() {
     ListRef: builder.objectRef<ListDoc>("List"),
     CardRef: builder.objectRef<CardDoc>("Card"),
     TagRef: builder.objectRef<TagDoc>("Tag"),
+    PriorityEnum: builder.enumType("Priority", {
+      description: "How urgent a card is, from HIGHEST to LOWEST.",
+      values: PRIORITIES,
+    }),
     MoveCardPayloadRef: builder.objectRef<{
       card: CardDoc;
       fromList: ListDoc;

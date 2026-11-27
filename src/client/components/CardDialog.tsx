@@ -8,6 +8,7 @@ import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
+import MenuItem from "@mui/material/MenuItem";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -15,58 +16,72 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, type FormEvent } from "react";
+import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority";
 import type { Board, BoardCard } from "../board-moves";
+import { blueContainedSx, blueOutlinedSx } from "../buttons";
 import { errorMessage, useNotify } from "../notify";
-import { ArchiveCardMutation, UpdateCardMutation } from "../operations";
+import { ArchiveCardMutation, CreateCardMutation, UpdateCardMutation } from "../operations";
 import { useDeleteCard } from "../deletes";
 import { useIsPhone } from "../useIsPhone";
 import { userInitial } from "./CardItem";
 import { ConfirmDelete } from "./ConfirmDelete";
+import { PriorityIcon } from "./PriorityIcon";
 import { TagToggle } from "./TagChip";
 
 type Member = Board["members"][number];
 type Tag = Board["tags"][number];
 
+/**
+ * Card editor. Pass `card` to edit one, or `newInList` to write a new card for that list: the
+ * same fields, created on Save ("Add card"), without archive or delete.
+ */
 export function CardDialog({
   card,
+  newInList,
   members,
   tags,
   onClose,
 }: {
-  card: BoardCard;
   members: Member[];
   /** The board's tags, offered to switch on and off. */
   tags: Tag[];
   onClose: () => void;
-}) {
+} & (
+  | { card: BoardCard; newInList?: undefined }
+  | { card?: undefined; newInList: { id: string; title: string } }
+)) {
   const notify = useNotify();
   const isPhone = useIsPhone();
-  const [title, setTitle] = useState(card.title);
-  const [description, setDescription] = useState(card.description);
-  const [tagIds, setTagIds] = useState<string[]>(card.tags.map((t) => t.id));
-  const [dueDate, setDueDate] = useState(card.dueDate?.slice(0, 10) ?? "");
+  const [title, setTitle] = useState(card?.title ?? "");
+  const [description, setDescription] = useState(card?.description ?? "");
+  const [tagIds, setTagIds] = useState<string[]>(card?.tags.map((t) => t.id) ?? []);
+  const [dueDate, setDueDate] = useState(card?.dueDate?.slice(0, 10) ?? "");
+  // "" is "no priority" in the select; it's sent as null.
+  const [priority, setPriority] = useState<Priority | "">(card?.priority ?? "");
   const [assignees, setAssignees] = useState<Member[]>(
-    members.filter((m) => card.assignees.some((a) => a.id === m.id)),
+    members.filter((m) => card?.assignees.some((a) => a.id === m.id)),
   );
-  const [updateCard, { loading: saving }] = useMutation(UpdateCardMutation);
+  const [updateCard, { loading: updating }] = useMutation(UpdateCardMutation);
+  const [createCard, { loading: creating }] = useMutation(CreateCardMutation);
+  const saving = updating || creating;
   const [archiveCard, { loading: archiving }] = useMutation(ArchiveCardMutation);
   const [deleteCard, deleting] = useDeleteCard();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    const details = {
+      title: title.trim(),
+      description,
+      // Only tags still on the board (one could be deleted while this is open).
+      tagIds: tagIds.filter((id) => tags.some((t) => t.id === id)),
+      dueDate: dueDate || null,
+      priority: priority || null,
+      assigneeIds: assignees.map((a) => a.id),
+    };
     try {
-      await updateCard({
-        variables: {
-          id: card.id,
-          title: title.trim(),
-          description,
-          // Only tags still on the board (one could be deleted while this is open).
-          tagIds: tagIds.filter((id) => tags.some((t) => t.id === id)),
-          dueDate: dueDate || null,
-          assigneeIds: assignees.map((a) => a.id),
-        },
-      });
+      if (card) await updateCard({ variables: { id: card.id, ...details } });
+      else await createCard({ variables: { listId: newInList.id, ...details } });
       onClose();
     } catch (err) {
       notify(errorMessage(err));
@@ -74,6 +89,7 @@ export function CardDialog({
   }
 
   async function archive() {
+    if (!card) return;
     try {
       await archiveCard({ variables: { id: card.id } });
       onClose();
@@ -93,7 +109,14 @@ export function CardDialog({
         style={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0 }}
       >
         <DialogTitle sx={{ pb: 1 }}>
+          {newInList && (
+            <Typography variant="caption" color="text.secondary" component="p">
+              New card in “{newInList.title}”
+            </Typography>
+          )}
           <TextField
+            autoFocus={!card}
+            placeholder={card ? undefined : "Card title"}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             variant="standard"
@@ -128,37 +151,60 @@ export function CardDialog({
                 </Typography>
               )}
             </Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                select
+                label="Priority"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as Priority | "")}
+                slotProps={{
+                  select: {
+                    displayEmpty: true,
+                    renderValue: (value) => <PriorityOption priority={value as Priority | ""} />,
+                  },
+                  inputLabel: { shrink: true },
+                }}
+                sx={{ flex: 1, minWidth: 0 }}
+              >
+                <MenuItem value="">
+                  <PriorityOption priority="" />
+                </MenuItem>
+                {PRIORITIES.map((p) => (
+                  <MenuItem key={p} value={p}>
+                    <PriorityOption priority={p} />
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
                 label="Due date"
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }}
-                sx={{ minWidth: 180 }}
-              />
-              <Autocomplete
-                multiple
-                fullWidth
-                options={members}
-                value={assignees}
-                onChange={(_e, value) => setAssignees(value)}
-                getOptionLabel={(m) => m.name ?? m.email}
-                isOptionEqualToValue={(a, b) => a.id === b.id}
-                renderOption={({ key, ...props }, m) => (
-                  <li key={key} {...props}>
-                    <Avatar
-                      src={m.image ?? undefined}
-                      sx={{ width: 24, height: 24, mr: 1, fontSize: 12 }}
-                    >
-                      {userInitial(m)}
-                    </Avatar>
-                    {m.name ?? m.email}
-                  </li>
-                )}
-                renderInput={(params) => <TextField {...params} label="Assignees" />}
+                sx={{ flex: 1, minWidth: 0 }}
               />
             </Stack>
+            <Autocomplete
+              multiple
+              fullWidth
+              options={members}
+              value={assignees}
+              onChange={(_e, value) => setAssignees(value)}
+              getOptionLabel={(m) => m.name ?? m.email}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              renderOption={({ key, ...props }, m) => (
+                <li key={key} {...props}>
+                  <Avatar
+                    src={m.image ?? undefined}
+                    sx={{ width: 24, height: 24, mr: 1, fontSize: 12 }}
+                  >
+                    {userInitial(m)}
+                  </Avatar>
+                  {m.name ?? m.email}
+                </li>
+              )}
+              renderInput={(params) => <TextField {...params} label="Assignees" />}
+            />
             <TextField
               label="Description"
               multiline
@@ -170,53 +216,64 @@ export function CardDialog({
             />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: "space-between", px: 3, pb: 2 }}>
+        <DialogActions sx={{ justifyContent: card ? "space-between" : "flex-end", px: 3, pb: 2 }}>
           {/* On phones these two show icons only, so all four actions fit on one row. */}
-          <Stack direction="row" spacing={0.5}>
-            <Button
-              startIcon={<ArchiveIcon />}
-              color="inherit"
-              onClick={archive}
-              disabled={archiving}
-              aria-label="Archive"
-              sx={actionSx}
-            >
-              <Box component="span" sx={labelSx}>
-                Archive
-              </Box>
-            </Button>
-            <Button
-              startIcon={<DeleteOutlineIcon />}
-              color="error"
-              onClick={() => setConfirmDelete(true)}
-              aria-label="Delete"
-              sx={actionSx}
-            >
-              <Box component="span" sx={labelSx}>
-                Delete
-              </Box>
-            </Button>
-          </Stack>
+          {card && (
+            <Stack direction="row" spacing={0.5}>
+              <Button
+                startIcon={<ArchiveIcon />}
+                color="inherit"
+                onClick={archive}
+                disabled={archiving}
+                aria-label="Archive"
+                sx={actionSx}
+              >
+                <Box component="span" sx={labelSx}>
+                  Archive
+                </Box>
+              </Button>
+              <Button
+                startIcon={<DeleteOutlineIcon />}
+                color="error"
+                onClick={() => setConfirmDelete(true)}
+                aria-label="Delete"
+                sx={actionSx}
+              >
+                <Box component="span" sx={labelSx}>
+                  Delete
+                </Box>
+              </Button>
+            </Stack>
+          )}
           <Stack direction="row" spacing={1}>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={saving || !title.trim()}>
-              Save
+            <Button variant="outlined" onClick={onClose} sx={blueOutlinedSx}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={saving || !title.trim()}
+              sx={blueContainedSx}
+            >
+              {card ? "Save" : "Add card"}
             </Button>
           </Stack>
         </DialogActions>
       </form>
-      <ConfirmDelete
-        open={confirmDelete}
-        title={`Delete “${card.title}”?`}
-        busy={deleting}
-        onClose={() => setConfirmDelete(false)}
-        onConfirm={async () => {
-          if (await deleteCard(card.id, card.title)) onClose();
-        }}
-      >
-        This permanently deletes the card and its details. It can&apos;t be undone. To hide it but
-        keep it, archive it instead.
-      </ConfirmDelete>
+      {card && (
+        <ConfirmDelete
+          open={confirmDelete}
+          title={`Delete “${card.title}”?`}
+          busy={deleting}
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={async () => {
+            if (await deleteCard(card.id, card.title)) onClose();
+          }}
+        >
+          This permanently deletes the card and its details. It can&apos;t be undone. To hide it but
+          keep it, archive it instead.
+        </ConfirmDelete>
+      )}
     </Dialog>
   );
 }
@@ -228,3 +285,17 @@ const actionSx = {
   "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
 };
 const labelSx = { display: { xs: "none", sm: "inline" } };
+
+/** A priority's icon and name, as shown in the select (or "None"). */
+function PriorityOption({ priority }: { priority: Priority | "" }) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      {priority ? (
+        <PriorityIcon priority={priority} decorative />
+      ) : (
+        <Box sx={{ width: 20 }} aria-hidden />
+      )}
+      <span>{priority ? PRIORITY_LABELS[priority] : "None"}</span>
+    </Stack>
+  );
+}

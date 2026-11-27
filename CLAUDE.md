@@ -120,9 +120,10 @@ replaced by tags and are no longer read.
   long-press so swipes scroll). Drag order is local state; after a drop it's held in `pending`
   until the mutation settles. Falling back to the cache immediately made the drop animation fly
   back to the card's old spot.
-- Lists drag only by the grip icon in their header (it carries dnd-kit's `listeners`). Don't put
-  the listeners on an element that contains menus or dialogs: key events from portals bubble up
-  the React tree to it and start a keyboard drag.
+- Lists and cards drag only by their grip icon (`DragHandle`, which carries dnd-kit's
+  `listeners` and activator ref); clicking a card opens it. Don't put the listeners on an element
+  that contains menus or dialogs: key events from portals bubble up the React tree to it and
+  start a keyboard drag. The e2e test drags by the "Drag card …" grip.
 
 ### Client data and rendering
 

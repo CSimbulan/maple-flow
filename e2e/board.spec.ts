@@ -35,19 +35,20 @@ test("create a board, add cards, and drag them between lists", async ({ page }) 
   await expect(page).toHaveURL(/\/b\/[0-9a-f]{24}$/);
 
   const todo = page.getByLabel("List To do", { exact: true });
-  await todo.getByRole("button", { name: "Add a card" }).click();
+  // "Add a card" opens the card dialog; Enter in the title field adds the card and closes it.
   for (const title of ["First", "Second", "Third"]) {
-    await page.getByLabel("Enter a title for this card").fill(title);
+    await todo.getByRole("button", { name: "Add a card" }).click();
+    await page.getByLabel("Card title").fill(title);
     await page.keyboard.press("Enter");
     await expect(todo.getByLabel(`Card ${title}`, { exact: true })).toBeVisible();
   }
-  await page.keyboard.press("Escape");
   await expect(cardsIn(page, "To do")).toHaveText(["First", "Second", "Third"]);
 
   // Across lists: Second into the empty Doing list.
+  // Cards drag only by their grip.
   await drag(
     page,
-    page.getByLabel("Card Second", { exact: true }),
+    page.getByLabel("Drag card Second", { exact: true }),
     page.getByLabel("List Doing", { exact: true }),
   );
   await expect(cardsIn(page, "Doing")).toHaveText(["Second"]);
@@ -56,7 +57,7 @@ test("create a board, add cards, and drag them between lists", async ({ page }) 
   // Within a list: Third above First.
   await drag(
     page,
-    page.getByLabel("Card Third", { exact: true }),
+    page.getByLabel("Drag card Third", { exact: true }),
     page.getByLabel("Card First", { exact: true }),
     0.15,
   );

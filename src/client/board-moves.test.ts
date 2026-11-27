@@ -16,6 +16,7 @@ function card(id: string, listId: string, position: string): BoardCard {
     title: id,
     description: "",
     tags: [],
+    priority: null,
     dueDate: null,
     position,
     listId,

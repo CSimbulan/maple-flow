@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
+import { PRIORITIES, type Priority } from "../../lib/priority";
 
 // Explicit interfaces: Mongoose's InferSchemaType is slow enough to exhaust tsc's memory here.
 type Timestamps = { createdAt: Date; updatedAt: Date };
@@ -69,6 +70,8 @@ export interface CardDoc extends Timestamps {
   description: string;
   /** Ids of tags from the card's board. Tags deleted from the board are pulled from here. */
   tagIds: Types.ObjectId[];
+  /** Null (or missing, on cards from before priorities) when none is set. */
+  priority: Priority | null;
   dueDate: Date | null;
   assigneeIds: Types.ObjectId[];
   position: string;
@@ -140,6 +143,7 @@ const cardSchema = new Schema<CardDoc>(
     title: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
     tagIds: { type: [ObjectId], default: [] },
+    priority: { type: String, enum: PRIORITIES, default: null },
     dueDate: { type: Date, default: null },
     assigneeIds: { type: [ObjectId], ref: "User", default: [] },
     position: { type: String, required: true },

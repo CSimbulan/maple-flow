@@ -3,6 +3,7 @@ import type { Model, Types } from "mongoose";
 import { z } from "zod";
 import { defaultListColor } from "../../lib/list-colors";
 import { initialPositions, insertIndex, planInsert } from "../../lib/position";
+import { PRIORITIES } from "../../lib/priority";
 import { DEFAULT_TAGS } from "../../lib/tags";
 import {
   BoardModel,
@@ -42,6 +43,53 @@ const dueDate = z.union([z.iso.date(), z.iso.datetime({ offset: true })]).nullab
 const email = z.email().transform((e) => e.toLowerCase());
 
 const DEFAULT_LISTS = ["To do", "Doing", "Done"];
+
+/** Card fields besides the title, shared by createCard and updateCard. All optional. */
+const cardDetails = z.object({
+  description: description.nullish(),
+  tagIds: z.array(z.string()).max(MAX_TAGS).nullish(),
+  dueDate: dueDate.optional(),
+  priority: z.enum(PRIORITIES).nullable().optional(),
+  assigneeIds: z.array(z.string()).nullish(),
+});
+
+/**
+ * The fields to store for the given card details, after checking that tags belong to the
+ * board and assignees can open it. Arguments left out are left out here too.
+ */
+async function cardDetailsSet(
+  ctx: Context,
+  boardId: Types.ObjectId,
+  input: z.infer<typeof cardDetails>,
+): Promise<Record<string, unknown>> {
+  const $set: Record<string, unknown> = {};
+  if (input.description != null) $set.description = input.description;
+  if (input.tagIds || input.assigneeIds) {
+    const board = (await ctx.loaders.boardById.load(boardId.toString()))!;
+    if (input.tagIds) {
+      const onBoard = new Set((await tagsOf(board)).map((tag) => tag._id.toString()));
+      const unique = [...new Set(input.tagIds)];
+      if (unique.some((id) => !onBoard.has(id))) {
+        throw badInput("Tags must belong to the card's board");
+      }
+      $set.tagIds = unique;
+    }
+    if (input.assigneeIds) {
+      const members = new Set(await boardAudienceIds(ctx, board));
+      const unique = [...new Set(input.assigneeIds)];
+      if (unique.some((id) => !members.has(id))) {
+        throw badInput("Assignees must be members of the board");
+      }
+      $set.assigneeIds = unique;
+    }
+  }
+  // An explicit null clears the due date or priority; leaving the argument out keeps it.
+  if (input.dueDate !== undefined) {
+    $set.dueDate = input.dueDate ? new Date(input.dueDate) : null;
+  }
+  if (input.priority !== undefined) $set.priority = input.priority;
+  return $set;
+}
 
 /** Fresh board doc, replacing whatever the loader cached earlier in this request. */
 async function reloadBoard(ctx: Context, boardId: string | Types.ObjectId): Promise<BoardDoc> {
@@ -98,6 +146,7 @@ export function buildSchema() {
     RestoreListPayloadRef,
     DeleteCardPayloadRef,
     DeleteListPayloadRef,
+    PriorityEnum,
   } = parts;
   defineTypes(parts);
   defineWorkspaceSchema(parts);
@@ -405,12 +454,25 @@ export function buildSchema() {
       // ---- Cards ----
       createCard: t.field({
         type: ListRef,
-        args: { listId: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
+        description:
+          "Add a card at the bottom of a list. The details are optional and checked like " +
+          "updateCard's.",
+        args: {
+          listId: t.arg.id({ required: true }),
+          title: t.arg.string({ required: true }),
+          description: t.arg.string(),
+          tagIds: t.arg.idList(),
+          dueDate: t.arg.string(),
+          priority: t.arg({ type: PriorityEnum }),
+          assigneeIds: t.arg.idList(),
+        },
         resolve: async (_root, args, ctx) => {
           const list = await requireList(ctx, args.listId);
-          const input = parse(z.object({ title }), args);
+          const input = parse(cardDetails.extend({ title }), args);
+          const details = await cardDetailsSet(ctx, list.boardId, input);
           const position = await positionIn(CardModel, { listId: list._id }, null);
           await CardModel.create({
+            ...details,
             boardId: list.boardId,
             listId: list._id,
             title: input.title,
@@ -427,45 +489,14 @@ export function buildSchema() {
           description: t.arg.string(),
           tagIds: t.arg.idList(),
           dueDate: t.arg.string(),
+          priority: t.arg({ type: PriorityEnum }),
           assigneeIds: t.arg.idList(),
         },
         resolve: async (_root, args, ctx) => {
           const card = await requireCard(ctx, args.id);
-          const input = parse(
-            z.object({
-              title: title.nullish(),
-              description: description.nullish(),
-              tagIds: z.array(z.string()).max(MAX_TAGS).nullish(),
-              dueDate: dueDate.optional(),
-              assigneeIds: z.array(z.string()).nullish(),
-            }),
-            args,
-          );
-          const $set: Record<string, unknown> = {};
+          const input = parse(cardDetails.extend({ title: title.nullish() }), args);
+          const $set = await cardDetailsSet(ctx, card.boardId, input);
           if (input.title) $set.title = input.title;
-          if (input.description != null) $set.description = input.description;
-          if (input.tagIds) {
-            const board = (await ctx.loaders.boardById.load(card.boardId.toString()))!;
-            const onBoard = new Set((await tagsOf(board)).map((tag) => tag._id.toString()));
-            const unique = [...new Set(input.tagIds)];
-            if (unique.some((id) => !onBoard.has(id))) {
-              throw badInput("Tags must belong to the card's board");
-            }
-            $set.tagIds = unique;
-          }
-          // An explicit null clears the due date; leaving the argument out keeps it.
-          if (input.dueDate !== undefined) {
-            $set.dueDate = input.dueDate ? new Date(input.dueDate) : null;
-          }
-          if (input.assigneeIds) {
-            const board = (await ctx.loaders.boardById.load(card.boardId.toString()))!;
-            const members = new Set(await boardAudienceIds(ctx, board));
-            const unique = [...new Set(input.assigneeIds)];
-            if (unique.some((id) => !members.has(id))) {
-              throw badInput("Assignees must be members of the board");
-            }
-            $set.assigneeIds = unique;
-          }
           return (await CardModel.findByIdAndUpdate(
             card._id,
             { $set },

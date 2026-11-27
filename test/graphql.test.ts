@@ -467,6 +467,69 @@ describe("sharing and cards", () => {
     expect(after.lists[0].cards[0].assignees).toEqual([]);
   });
 
+  it("creates a card with its details in one go, checked like updates", async () => {
+    const board = await newBoard();
+    const tags = (
+      await run(ann, `query ($id: ID!) { board(id: $id) { tags { id } } }`, {
+        id: board.id,
+      })
+    ).board.tags;
+    const CREATE = `mutation ($l: ID!, $t: String!, $d: String, $tags: [ID!], $due: String, $a: [ID!]) {
+      createCard(listId: $l, title: $t, description: $d, tagIds: $tags, dueDate: $due, assigneeIds: $a) {
+        cards { title description tags { id } dueDate assignees { id } }
+      }
+    }`;
+    const vars = {
+      l: board.lists[0].id,
+      t: "Full",
+      d: "Notes",
+      tags: [tags[1].id],
+      due: "2026-12-24",
+      a: [ann],
+    };
+    const { createCard } = await run(ann, CREATE, vars);
+    expect(createCard.cards).toEqual([
+      {
+        title: "Full",
+        description: "Notes",
+        tags: [{ id: tags[1].id }],
+        dueDate: "2026-12-24T00:00:00.000Z",
+        assignees: [{ id: ann }],
+      },
+    ]);
+
+    // Same rules as updateCard, and nothing is created when they fail.
+    expect(await errorCode(run(ann, CREATE, { ...vars, a: [bob] }))).toBe("BAD_USER_INPUT");
+    expect(await errorCode(run(ann, CREATE, { ...vars, tags: ["nope"] }))).toBe("BAD_USER_INPUT");
+    expect(await errorCode(run(ann, CREATE, { ...vars, due: "soon" }))).toBe("BAD_USER_INPUT");
+    expect(await CardModel.countDocuments({ boardId: board.id })).toBe(1);
+  });
+
+  it("sets, keeps and clears a card's priority", async () => {
+    const board = await newBoard();
+    const created = await run(
+      ann,
+      `mutation ($l: ID!) { createCard(listId: $l, title: "Urgent", priority: HIGHEST) { cards { id priority } } }`,
+      { l: board.lists[0].id },
+    );
+    const { id, priority } = created.createCard.cards[0];
+    expect(priority).toBe("HIGHEST");
+
+    const SET = `mutation ($id: ID!, $p: Priority, $t: String) {
+      updateCard(id: $id, priority: $p, title: $t) { priority }
+    }`;
+    expect((await run(ann, SET, { id, p: "LOW" })).updateCard.priority).toBe("LOW");
+    // Leaving priority out keeps it; passing null clears it.
+    expect((await run(ann, SET, { id, t: "Renamed" })).updateCard.priority).toBe("LOW");
+    expect((await run(ann, SET, { id, p: null })).updateCard.priority).toBeNull();
+    // Not one of the five values: rejected by the GraphQL enum itself.
+    await expect(run(ann, SET, { id, p: "URGENT" })).rejects.toThrow();
+
+    // Cards from before priorities have none.
+    await CardModel.updateOne({ _id: id }, { $unset: { priority: 1 } });
+    expect((await run(ann, SET, { id, t: "Old" })).updateCard.priority).toBeNull();
+  });
+
   it("updates card details", async () => {
     const board = await newBoard();
     await addCards(ann, board.lists[0].id, ["Task"]);

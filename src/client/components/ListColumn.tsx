@@ -4,9 +4,10 @@ import { useMutation } from "@apollo/client/react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import AddIcon from "@mui/icons-material/Add";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
@@ -17,19 +18,14 @@ import { useState } from "react";
 import type { BoardCard, BoardList } from "../board-moves";
 import { useDeleteList } from "../deletes";
 import { errorMessage, useNotify } from "../notify";
-import {
-  ArchiveListMutation,
-  CreateCardMutation,
-  RenameListMutation,
-  UpdateListColorMutation,
-} from "../operations";
+import { ArchiveListMutation, RenameListMutation, UpdateListColorMutation } from "../operations";
 import { BRAND } from "@/brand";
 import { LIST_COLORS } from "@/lib/list-colors";
-import { noTouchSelectSx, SortableCard } from "./CardItem";
+import { SortableCard } from "./CardItem";
+import { DragHandle } from "./DragHandle";
 import { ColorSwatches } from "./ColorSwatches";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
-import { InlineAdd } from "./InlineAdd";
 
 /**
  * On phones a list fills most of the screen with the next one peeking in, and the board snaps
@@ -58,15 +54,29 @@ export function ListColumn({
   list,
   cardIds,
   cardsById,
+  accent,
   onOpenCard,
+  onAddCard,
 }: {
   list: BoardList;
   cardIds: string[];
   cardsById: Map<string, BoardCard>;
+  /** The board's color, for the line under each card's title. */
+  accent: string;
   onOpenCard: (id: string) => void;
+  /** Opens the card dialog to write a new card for this list. */
+  onAddCard: () => void;
 }) {
   const notify = useNotify();
-  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: `list:${list.id}`,
     data: { type: "list" },
   });
@@ -78,7 +88,6 @@ export function ListColumn({
   const [renameList] = useMutation(RenameListMutation);
   const [updateListColor] = useMutation(UpdateListColorMutation);
   const [archiveList] = useMutation(ArchiveListMutation);
-  const [createCard] = useMutation(CreateCardMutation);
   const [deleteList, deleting] = useDeleteList();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const cardCount = list.cards.length;
@@ -102,26 +111,13 @@ export function ListColumn({
         sx={{ alignItems: "center", pl: 0.5, pr: 1, py: 0.75, bgcolor: list.color }}
       >
         {/* Only this icon drags the list, so the title and menu work like any other control. */}
-        <Box
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag list ${list.title}`}
-          sx={{
-            ...noTouchSelectSx,
-            display: "flex",
-            alignItems: "center",
-            p: 0.5,
-            borderRadius: 1,
-            color: "text.secondary",
-            cursor: isDragging ? "grabbing" : "grab",
-            // The touch sensor's long-press needs the browser not to treat it as a scroll.
-            touchAction: "none",
-            "&:hover": { color: "text.primary", bgcolor: "rgba(0,0,0,0.06)" },
-            "&:focus-visible": { outline: 2, outlineColor: "primary.main" },
-          }}
-        >
-          <DragIndicatorIcon fontSize="small" />
-        </Box>
+        <DragHandle
+          label={`Drag list ${list.title}`}
+          dragging={isDragging}
+          attributes={attributes}
+          listeners={listeners}
+          activatorRef={setActivatorNodeRef}
+        />
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <EditableTitle
             value={list.title}
@@ -213,18 +209,22 @@ export function ListColumn({
         >
           {cardIds.map((id) => {
             const card = cardsById.get(id);
-            return card ? <SortableCard key={id} card={card} onOpen={onOpenCard} /> : null;
+            return card ? (
+              <SortableCard key={id} card={card} accent={accent} onOpen={onOpenCard} />
+            ) : null;
           })}
         </Stack>
       </SortableContext>
 
       <Box sx={{ p: 1 }}>
-        <InlineAdd
-          label="Add a card"
-          placeholder="Enter a title for this card"
-          submitLabel="Add card"
-          onAdd={(title) => run(createCard({ variables: { listId: list.id, title } }))}
-        />
+        <Button
+          startIcon={<AddIcon />}
+          fullWidth
+          onClick={onAddCard}
+          sx={{ justifyContent: "flex-start", color: "text.secondary" }}
+        >
+          Add a card
+        </Button>
       </Box>
     </Box>
   );

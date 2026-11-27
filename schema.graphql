@@ -36,6 +36,9 @@ type Card {
   listId: ID!
   position: String!
 
+  """Null when none is set."""
+  priority: Priority
+
   """The card's tags, in the board's tag order."""
   tags: [Tag!]!
   title: String!
@@ -83,7 +86,11 @@ type Mutation {
   archiveCard(id: ID!): List!
   archiveList(id: ID!): Board!
   createBoard(background: String, projectId: ID!, title: String!): Board!
-  createCard(listId: ID!, title: String!): List!
+
+  """
+  Add a card at the bottom of a list. The details are optional and checked like updateCard's.
+  """
+  createCard(assigneeIds: [ID!], description: String, dueDate: String, listId: ID!, priority: Priority, tagIds: [ID!], title: String!): List!
 
   """
   Add a list at the end of the board. Without `color` it gets the next default color for its place (the board's first list blue, the second green, and so on).
@@ -140,9 +147,18 @@ type Mutation {
   """
   restoreList(id: ID!): RestoreListPayload!
   updateBoard(background: String, id: ID!, title: String): Board!
-  updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, tagIds: [ID!], title: String): Card!
+  updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, priority: Priority, tagIds: [ID!], title: String): Card!
   updateListColor(color: String!, id: ID!): List!
   updateTag(boardId: ID!, color: String, name: String, tagId: ID!): Board!
+}
+
+"""How urgent a card is, from HIGHEST to LOWEST."""
+enum Priority {
+  HIGH
+  HIGHEST
+  LOW
+  LOWEST
+  MEDIUM
 }
 
 type Project {

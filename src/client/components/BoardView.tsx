@@ -40,6 +40,7 @@ import {
   type BoardCard,
   type Columns,
 } from "../board-moves";
+import { CollapsedCardsProvider } from "../collapsed-cards";
 import { useShowOrg } from "../current-org";
 import { errorMessage, useNotify } from "../notify";
 import {
@@ -111,7 +112,11 @@ export function BoardView({ boardId }: { boardId: string }) {
       </Alert>
     );
   }
-  return <BoardCanvas board={data.board} />;
+  return (
+    <CollapsedCardsProvider boardId={data.board.id}>
+      <BoardCanvas board={data.board} />
+    </CollapsedCardsProvider>
+  );
 }
 
 function BoardCanvas({ board }: { board: Board }) {
@@ -122,6 +127,8 @@ function BoardCanvas({ board }: { board: Board }) {
   const [moveList] = useMutation(MoveListMutation);
   const [createList] = useMutation(CreateListMutation);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
+  // The list "Add a card" was clicked in, while its new-card dialog is open.
+  const [newCardList, setNewCardList] = useState<{ id: string; title: string } | null>(null);
   // Color for the next new list: the default for its place unless one was picked.
   const [pickedListColor, setPickedListColor] = useState<string | null>(null);
   const newListColor = pickedListColor ?? defaultListColor(board.lists.length);
@@ -293,7 +300,9 @@ function BoardCanvas({ board }: { board: Board }) {
                   list={list}
                   cardIds={columns.cards[id] ?? []}
                   cardsById={cardsById}
+                  accent={board.background}
                   onOpenCard={setOpenCardId}
+                  onAddCard={() => setNewCardList({ id: list.id, title: list.title })}
                 />
               ) : null;
             })}
@@ -324,7 +333,7 @@ function BoardCanvas({ board }: { board: Board }) {
           {activeCard ? (
             // The overlay is sized to the dragged card, so fill it.
             <Box sx={{ width: "100%" }}>
-              <CardFace card={activeCard} dragging />
+              <CardFace card={activeCard} accent={board.background} dragging />
             </Box>
           ) : activeList ? (
             <ListOverlay list={activeList} />
@@ -337,6 +346,14 @@ function BoardCanvas({ board }: { board: Board }) {
           members={board.members}
           tags={board.tags}
           onClose={() => setOpenCardId(null)}
+        />
+      )}
+      {newCardList && (
+        <CardDialog
+          newInList={newCardList}
+          members={board.members}
+          tags={board.tags}
+          onClose={() => setNewCardList(null)}
         />
       )}
     </Box>

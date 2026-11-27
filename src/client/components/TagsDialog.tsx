@@ -12,7 +12,6 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
-import { blue } from "@mui/material/colors";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
@@ -20,6 +19,7 @@ import Typography from "@mui/material/Typography";
 import { useState, type FormEvent } from "react";
 import { TAG_COLORS, tagTextColor } from "@/lib/tags";
 import type { Board } from "../board-moves";
+import { blueContainedSx } from "../buttons";
 import { errorMessage, useNotify } from "../notify";
 import { CreateTagMutation, DeleteTagMutation, UpdateTagMutation } from "../operations";
 import { useIsPhone } from "../useIsPhone";
@@ -76,12 +76,7 @@ export function TagsDialog({ board, onClose }: { board: Board; onClose: () => vo
         >
           Exit
         </Button>
-        {/* Material UI's default primary blue; this app's theme makes primary red. */}
-        <Button
-          variant="contained"
-          onClick={onClose}
-          sx={{ bgcolor: blue[700], "&:hover": { bgcolor: blue[800] } }}
-        >
+        <Button variant="contained" onClick={onClose} sx={blueContainedSx}>
           Done
         </Button>
       </DialogActions>
