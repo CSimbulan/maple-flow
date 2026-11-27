@@ -1,0 +1,6 @@
+.next
+node_modules
+src/gql
+schema.graphql
+playwright-report
+test-results

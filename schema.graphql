@@ -1,0 +1,65 @@
+type Board {
+  background: String!
+  id: ID!
+  lists: [List!]!
+  members: [User!]!
+  owner: User!
+  title: String!
+  updatedAt: String!
+  viewerIsOwner: Boolean!
+}
+
+type Card {
+  assignees: [User!]!
+  boardId: ID!
+  description: String!
+  dueDate: String
+  id: ID!
+  labels: [String!]!
+  listId: ID!
+  position: String!
+  title: String!
+}
+
+type List {
+  boardId: ID!
+  cards: [Card!]!
+  id: ID!
+  position: String!
+  title: String!
+}
+
+type MoveCardPayload {
+  card: Card!
+  fromList: List!
+  toList: List!
+}
+
+type Mutation {
+  addBoardMember(boardId: ID!, email: String!): Board!
+  archiveCard(id: ID!): List!
+  archiveList(id: ID!): Board!
+  createBoard(background: String, title: String!): Board!
+  createCard(listId: ID!, title: String!): List!
+  createList(boardId: ID!, title: String!): Board!
+  deleteBoard(id: ID!): ID!
+  moveCard(afterId: ID, beforeId: ID, id: ID!, toListId: ID!): MoveCardPayload!
+  moveList(afterId: ID, beforeId: ID, id: ID!): Board!
+  removeBoardMember(boardId: ID!, userId: ID!): Board!
+  renameList(id: ID!, title: String!): List!
+  updateBoard(background: String, id: ID!, title: String): Board!
+  updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, labels: [String!], title: String): Card!
+}
+
+type Query {
+  board(id: ID!): Board
+  boards: [Board!]!
+  me: User
+}
+
+type User {
+  email: String!
+  id: ID!
+  image: String
+  name: String
+}
