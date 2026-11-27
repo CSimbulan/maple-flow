@@ -28,6 +28,17 @@ type Card {
   title: String!
 }
 
+type DeleteCardPayload {
+  board: Board!
+  deletedId: ID!
+  list: List!
+}
+
+type DeleteListPayload {
+  board: Board!
+  deletedId: ID!
+}
+
 type List {
   archived: Boolean!
   boardId: ID!
@@ -51,6 +62,14 @@ type Mutation {
   createCard(listId: ID!, title: String!): List!
   createList(boardId: ID!, title: String!): Board!
   deleteBoard(id: ID!): ID!
+
+  """Permanently delete a card (active or archived). Can't be undone."""
+  deleteCard(id: ID!): DeleteCardPayload!
+
+  """
+  Permanently delete a list (active or archived) and every card in it, including archived ones. Can't be undone.
+  """
+  deleteList(id: ID!): DeleteListPayload!
   moveCard(afterId: ID, beforeId: ID, id: ID!, toListId: ID!): MoveCardPayload!
   moveList(afterId: ID, beforeId: ID, id: ID!): Board!
   removeBoardMember(boardId: ID!, userId: ID!): Board!

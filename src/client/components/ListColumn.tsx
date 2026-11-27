@@ -12,10 +12,12 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import { useState } from "react";
 import type { BoardCard, BoardList } from "../board-moves";
+import { useDeleteList } from "../deletes";
 import { errorMessage, useNotify } from "../notify";
 import { ArchiveListMutation, CreateCardMutation, RenameListMutation } from "../operations";
 import { BRAND } from "@/brand";
 import { noTouchSelectSx, SortableCard } from "./CardItem";
+import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { InlineAdd } from "./InlineAdd";
 
@@ -63,6 +65,9 @@ export function ListColumn({
   const [renameList] = useMutation(RenameListMutation);
   const [archiveList] = useMutation(ArchiveListMutation);
   const [createCard] = useMutation(CreateCardMutation);
+  const [deleteList, deleting] = useDeleteList();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const cardCount = list.cards.length;
 
   const run = (p: Promise<unknown>) => p.catch((err) => notify(errorMessage(err)));
 
@@ -109,17 +114,41 @@ export function ListColumn({
         >
           <MoreHorizIcon fontSize="small" />
         </IconButton>
-        <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
-          <MenuItem
-            onClick={() => {
-              setMenuAnchor(null);
-              run(archiveList({ variables: { id: list.id } }));
-            }}
-          >
-            Archive this list
-          </MenuItem>
-        </Menu>
       </Stack>
+      {/* Outside the header: it is the drag handle, and key presses in these would start a drag. */}
+      <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            run(archiveList({ variables: { id: list.id } }));
+          }}
+        >
+          Archive this list
+        </MenuItem>
+        <MenuItem
+          sx={{ color: "error.main" }}
+          onClick={() => {
+            setMenuAnchor(null);
+            setConfirmDelete(true);
+          }}
+        >
+          Delete this list…
+        </MenuItem>
+      </Menu>
+      <ConfirmDelete
+        open={confirmDelete}
+        title={`Delete list “${list.title}”?`}
+        busy={deleting}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={async () => {
+          if (await deleteList(list.id, list.title)) setConfirmDelete(false);
+        }}
+      >
+        This permanently deletes the list
+        {cardCount > 0 ? ` and its ${cardCount} card${cardCount === 1 ? "" : "s"}` : ""}, along with
+        any archived cards from it. It can&apos;t be undone. To hide it but keep it, archive it
+        instead.
+      </ConfirmDelete>
 
       <SortableContext
         items={cardIds.map((id) => `card:${id}`)}

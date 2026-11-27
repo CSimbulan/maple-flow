@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@apollo/client/react";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import Alert from "@mui/material/Alert";
@@ -10,6 +11,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -18,6 +20,7 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useState, type ReactNode } from "react";
 import type {
@@ -27,6 +30,7 @@ import type {
 import type { LabelColor } from "@/server/db/models";
 import type { Board } from "../board-moves";
 import { LABEL_HEX } from "../colors";
+import { useDeleteCard, useDeleteList } from "../deletes";
 import { errorMessage, useNotify } from "../notify";
 import {
   ArchivedCardsQuery,
@@ -35,6 +39,7 @@ import {
   RestoreListMutation,
 } from "../operations";
 import { useIsPhone } from "../useIsPhone";
+import { ConfirmDelete } from "./ConfirmDelete";
 
 type ArchivedCard = NonNullable<ArchivedCardsData["board"]>["archivedCards"][number];
 type ArchivedList = NonNullable<ArchivedListsData["board"]>["archivedLists"][number];
@@ -105,6 +110,8 @@ function ArchivedCardRow({ card, activeLists }: { card: ArchivedCard; activeList
   const listGone = card.list.archived;
   const [target, setTarget] = useState(listGone ? (activeLists[0]?.id ?? "") : card.list.id);
   const [restore, { loading }] = useMutation(RestoreCardMutation);
+  const [deleteCard, deleting] = useDeleteCard();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function onRestore() {
     try {
@@ -160,7 +167,17 @@ function ArchivedCardRow({ card, activeLists }: { card: ArchivedCard; activeList
             </Typography>
           ))}
         <RestoreButton onClick={onRestore} disabled={loading || !target} />
+        <DeleteButton what="card" onClick={() => setConfirmDelete(true)} />
       </Stack>
+      <ConfirmDelete
+        open={confirmDelete}
+        title={`Delete “${card.title}”?`}
+        busy={deleting}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => deleteCard(card.id, card.title)}
+      >
+        This permanently deletes the card and its details. It can&apos;t be undone.
+      </ConfirmDelete>
     </Row>
   );
 }
@@ -197,6 +214,8 @@ function ArchivedLists({ board }: { board: Board }) {
 function ArchivedListRow({ list }: { list: ArchivedList }) {
   const notify = useNotify();
   const [restore, { loading }] = useMutation(RestoreListMutation);
+  const [deleteList, deleting] = useDeleteList();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const count = list.cards.length;
 
   async function onRestore() {
@@ -220,9 +239,21 @@ function ArchivedListRow({ list }: { list: ArchivedList }) {
               : `${count} cards come back with it`}
         </Typography>
       </Box>
-      <Box sx={{ flexShrink: 0 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexShrink: 0 }}>
         <RestoreButton onClick={onRestore} disabled={loading} />
-      </Box>
+        <DeleteButton what="list" onClick={() => setConfirmDelete(true)} />
+      </Stack>
+      <ConfirmDelete
+        open={confirmDelete}
+        title={`Delete list “${list.title}”?`}
+        busy={deleting}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => deleteList(list.id, list.title)}
+      >
+        This permanently deletes the list
+        {count > 0 ? ` and its ${count} card${count === 1 ? "" : "s"}` : ""}, along with any
+        archived cards from it. It can&apos;t be undone.
+      </ConfirmDelete>
     </Row>
   );
 }
@@ -264,6 +295,21 @@ function RestoreButton({ onClick, disabled }: { onClick: () => void; disabled: b
     >
       Restore
     </Button>
+  );
+}
+
+function DeleteButton({ what, onClick }: { what: "card" | "list"; onClick: () => void }) {
+  return (
+    <Tooltip title="Delete permanently">
+      <IconButton
+        size="small"
+        color="error"
+        aria-label={`Delete this ${what} permanently`}
+        onClick={onClick}
+      >
+        <DeleteOutlineIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
   );
 }
 

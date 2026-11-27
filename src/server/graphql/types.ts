@@ -18,6 +18,8 @@ export function defineTypes({
   MoveCardPayloadRef,
   RestoreCardPayloadRef,
   RestoreListPayloadRef,
+  DeleteCardPayloadRef,
+  DeleteListPayloadRef,
 }: SchemaParts) {
   builder.objectType(UserRef, {
     fields: (t) => ({
@@ -122,6 +124,21 @@ export function defineTypes({
   builder.objectType(RestoreListPayloadRef, {
     fields: (t) => ({
       list: t.field({ type: ListRef, resolve: (p) => p.list }),
+      board: t.field({ type: BoardRef, resolve: (p) => p.board }),
+    }),
+  });
+
+  builder.objectType(DeleteCardPayloadRef, {
+    fields: (t) => ({
+      deletedId: t.id({ resolve: (p) => p.deletedId }),
+      list: t.field({ type: ListRef, resolve: (p) => p.list }),
+      board: t.field({ type: BoardRef, resolve: (p) => p.board }),
+    }),
+  });
+
+  builder.objectType(DeleteListPayloadRef, {
+    fields: (t) => ({
+      deletedId: t.id({ resolve: (p) => p.deletedId }),
       board: t.field({ type: BoardRef, resolve: (p) => p.board }),
     }),
   });

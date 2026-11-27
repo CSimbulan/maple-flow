@@ -2,6 +2,7 @@
 
 import { useMutation } from "@apollo/client/react";
 import ArchiveIcon from "@mui/icons-material/Archive";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import Autocomplete from "@mui/material/Autocomplete";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -20,8 +21,10 @@ import type { Board, BoardCard } from "../board-moves";
 import { LABEL_HEX, LABELS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { ArchiveCardMutation, UpdateCardMutation } from "../operations";
+import { useDeleteCard } from "../deletes";
 import { useIsPhone } from "../useIsPhone";
 import { userInitial } from "./CardItem";
+import { ConfirmDelete } from "./ConfirmDelete";
 
 type Member = Board["members"][number];
 
@@ -45,6 +48,8 @@ export function CardDialog({
   );
   const [updateCard, { loading: saving }] = useMutation(UpdateCardMutation);
   const [archiveCard, { loading: archiving }] = useMutation(ArchiveCardMutation);
+  const [deleteCard, deleting] = useDeleteCard();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -170,14 +175,32 @@ export function CardDialog({
           </Stack>
         </DialogContent>
         <DialogActions sx={{ justifyContent: "space-between", px: 3, pb: 2 }}>
-          <Button
-            startIcon={<ArchiveIcon />}
-            color="inherit"
-            onClick={archive}
-            disabled={archiving}
-          >
-            Archive
-          </Button>
+          {/* On phones these two show icons only, so all four actions fit on one row. */}
+          <Stack direction="row" spacing={0.5}>
+            <Button
+              startIcon={<ArchiveIcon />}
+              color="inherit"
+              onClick={archive}
+              disabled={archiving}
+              aria-label="Archive"
+              sx={actionSx}
+            >
+              <Box component="span" sx={labelSx}>
+                Archive
+              </Box>
+            </Button>
+            <Button
+              startIcon={<DeleteOutlineIcon />}
+              color="error"
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Delete"
+              sx={actionSx}
+            >
+              <Box component="span" sx={labelSx}>
+                Delete
+              </Box>
+            </Button>
+          </Stack>
           <Stack direction="row" spacing={1}>
             <Button onClick={onClose}>Cancel</Button>
             <Button type="submit" variant="contained" disabled={saving || !title.trim()}>
@@ -186,6 +209,26 @@ export function CardDialog({
           </Stack>
         </DialogActions>
       </form>
+      <ConfirmDelete
+        open={confirmDelete}
+        title={`Delete “${card.title}”?`}
+        busy={deleting}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={async () => {
+          if (await deleteCard(card.id, card.title)) onClose();
+        }}
+      >
+        This permanently deletes the card and its details. It can&apos;t be undone. To hide it but
+        keep it, archive it instead.
+      </ConfirmDelete>
     </Dialog>
   );
 }
+
+// Icon-only on phones, at a 40px touch target.
+const actionSx = {
+  minWidth: { xs: 40, sm: 0 },
+  minHeight: { xs: 40, sm: "auto" },
+  "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
+};
+const labelSx = { display: { xs: "none", sm: "inline" } };

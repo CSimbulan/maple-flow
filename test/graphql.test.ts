@@ -488,3 +488,73 @@ describe("archived lists", () => {
     expect((await run(bob, ARCHIVED_LISTS, { id: board.id })).board).toBeNull();
   });
 });
+
+describe("permanent delete", () => {
+  const DELETE_CARD = `mutation ($id: ID!) {
+    deleteCard(id: $id) { deletedId list { title cards { title } } board { archivedCards { id } } }
+  }`;
+  const DELETE_LIST = `mutation ($id: ID!) {
+    deleteList(id: $id) { deletedId board { lists { title } archivedLists { id } archivedCards { id } } }
+  }`;
+  const ARCHIVE_CARD = `mutation ($id: ID!) { archiveCard(id: $id) { id } }`;
+
+  it("deletes an active card", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A", "B"]);
+    const a = await cardId(board.id, "A");
+    const { deleteCard } = await run(ann, DELETE_CARD, { id: a });
+    expect(deleteCard.deletedId).toBe(a);
+    expect(deleteCard.list.cards.map((c: { title: string }) => c.title)).toEqual(["B"]);
+    expect(await CardModel.countDocuments({ _id: a })).toBe(0);
+  });
+
+  it("deletes an archived card", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    const a = await cardId(board.id, "A");
+    await run(ann, ARCHIVE_CARD, { id: a });
+    const { deleteCard } = await run(ann, DELETE_CARD, { id: a });
+    expect(deleteCard.board.archivedCards).toEqual([]);
+    // Gone for good: it can't be restored.
+    expect(
+      await errorCode(
+        run(ann, `mutation ($id: ID!) { restoreCard(id: $id) { card { id } } }`, { id: a }),
+      ),
+    ).toBe("NOT_FOUND");
+  });
+
+  it("deletes a list with all its cards, including archived ones", async () => {
+    const board = await newBoard();
+    const [todo, doing] = board.lists;
+    await addCards(ann, todo.id, ["A", "B"]);
+    await addCards(ann, doing.id, ["Keep"]);
+    await run(ann, ARCHIVE_CARD, { id: await cardId(board.id, "A") });
+
+    const { deleteList } = await run(ann, DELETE_LIST, { id: todo.id });
+    expect(deleteList.deletedId).toBe(todo.id);
+    expect(deleteList.board.lists.map((l: { title: string }) => l.title)).toEqual([
+      "Doing",
+      "Done",
+    ]);
+    expect(deleteList.board.archivedCards).toEqual([]);
+    expect(await CardModel.countDocuments({ listId: todo.id })).toBe(0);
+    expect((await cardTitles(board.id)).Doing).toEqual(["Keep"]);
+  });
+
+  it("deletes an archived list", async () => {
+    const board = await newBoard();
+    const [todo] = board.lists;
+    await run(ann, `mutation ($id: ID!) { archiveList(id: $id) { id } }`, { id: todo.id });
+    const { deleteList } = await run(ann, DELETE_LIST, { id: todo.id });
+    expect(deleteList.board.archivedLists).toEqual([]);
+  });
+
+  it("only lets board members delete", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    const a = await cardId(board.id, "A");
+    expect(await errorCode(run(bob, DELETE_CARD, { id: a }))).toBe("NOT_FOUND");
+    expect(await errorCode(run(bob, DELETE_LIST, { id: board.lists[0].id }))).toBe("NOT_FOUND");
+    expect((await cardTitles(board.id))["To do"]).toEqual(["A"]);
+  });
+});

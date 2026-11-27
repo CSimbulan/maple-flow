@@ -33,6 +33,12 @@ export function createBuilder() {
     RestoreListPayloadRef: builder.objectRef<{ list: ListDoc; board: BoardDoc }>(
       "RestoreListPayload",
     ),
+    DeleteCardPayloadRef: builder.objectRef<{ deletedId: string; list: ListDoc; board: BoardDoc }>(
+      "DeleteCardPayload",
+    ),
+    DeleteListPayloadRef: builder.objectRef<{ deletedId: string; board: BoardDoc }>(
+      "DeleteListPayload",
+    ),
   };
 }
 

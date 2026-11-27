@@ -303,3 +303,43 @@ export const RestoreListMutation = graphql(`
     }
   }
 `);
+
+export const DeleteCardMutation = graphql(`
+  mutation DeleteCard($id: ID!) {
+    deleteCard(id: $id) {
+      deletedId
+      list {
+        id
+        cards {
+          id
+        }
+      }
+      board {
+        id
+        archivedCards {
+          id
+        }
+      }
+    }
+  }
+`);
+
+export const DeleteListMutation = graphql(`
+  mutation DeleteList($id: ID!) {
+    deleteList(id: $id) {
+      deletedId
+      board {
+        id
+        lists {
+          id
+        }
+        archivedLists {
+          id
+        }
+        archivedCards {
+          id
+        }
+      }
+    }
+  }
+`);

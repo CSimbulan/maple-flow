@@ -26,15 +26,19 @@ export async function requireBoardOwner(ctx: Context, boardId: string): Promise<
   return board;
 }
 
-/** The list, if the caller is a board member. `archived: true` looks among archived lists instead. */
+/** Which items to look among: active ones (default), archived ones, or either. */
+type ArchivedFilter = { archived?: boolean | "any" };
+const archivedQuery = (archived: boolean | "any") => (archived === "any" ? {} : { archived });
+
+/** The list, if the caller is a board member. `archived` picks active, archived or either. */
 export async function requireList(
   ctx: Context,
   listId: string,
-  { archived = false }: { archived?: boolean } = {},
+  { archived = false }: ArchivedFilter = {},
 ): Promise<ListDoc> {
   const list = await ListModel.findOne({
     _id: objectId(listId, "List"),
-    archived,
+    ...archivedQuery(archived),
   }).lean<ListDoc>();
   if (!list) throw notFound("List");
   await requireBoardMember(ctx, list.boardId.toString()).catch(() => {
@@ -43,15 +47,15 @@ export async function requireList(
   return list;
 }
 
-/** The card, if the caller is a board member. `archived: true` looks among archived cards instead. */
+/** The card, if the caller is a board member. `archived` picks active, archived or either. */
 export async function requireCard(
   ctx: Context,
   cardId: string,
-  { archived = false }: { archived?: boolean } = {},
+  { archived = false }: ArchivedFilter = {},
 ): Promise<CardDoc> {
   const card = await CardModel.findOne({
     _id: objectId(cardId, "Card"),
-    archived,
+    ...archivedQuery(archived),
   }).lean<CardDoc>();
   if (!card) throw notFound("Card");
   await requireBoardMember(ctx, card.boardId.toString()).catch(() => {

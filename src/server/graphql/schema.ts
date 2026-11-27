@@ -87,6 +87,8 @@ export function buildSchema() {
     MoveCardPayloadRef,
     RestoreCardPayloadRef,
     RestoreListPayloadRef,
+    DeleteCardPayloadRef,
+    DeleteListPayloadRef,
   } = parts;
   defineTypes(parts);
 
@@ -244,6 +246,30 @@ export function buildSchema() {
           const list = await requireList(ctx, id);
           await ListModel.updateOne({ _id: list._id }, { $set: { archived: true } });
           return reloadBoard(ctx, list.boardId);
+        },
+      }),
+      deleteList: t.field({
+        type: DeleteListPayloadRef,
+        description:
+          "Permanently delete a list (active or archived) and every card in it, " +
+          "including archived ones. Can't be undone.",
+        args: { id: t.arg.id({ required: true }) },
+        resolve: async (_root, { id }, ctx) => {
+          const list = await requireList(ctx, id, { archived: "any" });
+          await CardModel.deleteMany({ listId: list._id });
+          await ListModel.deleteOne({ _id: list._id });
+          return { deletedId: id, board: await reloadBoard(ctx, list.boardId) };
+        },
+      }),
+      deleteCard: t.field({
+        type: DeleteCardPayloadRef,
+        description: "Permanently delete a card (active or archived). Can't be undone.",
+        args: { id: t.arg.id({ required: true }) },
+        resolve: async (_root, { id }, ctx) => {
+          const card = await requireCard(ctx, id, { archived: "any" });
+          await CardModel.deleteOne({ _id: card._id });
+          const list = (await ListModel.findById(card.listId).lean<ListDoc>())!;
+          return { deletedId: id, list, board: await reloadBoard(ctx, card.boardId) };
         },
       }),
       restoreList: t.field({
