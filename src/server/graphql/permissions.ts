@@ -38,10 +38,15 @@ export async function requireList(ctx: Context, listId: string): Promise<ListDoc
   return list;
 }
 
-export async function requireCard(ctx: Context, cardId: string): Promise<CardDoc> {
+/** The card, if the caller is a board member. `archived: true` looks among archived cards instead. */
+export async function requireCard(
+  ctx: Context,
+  cardId: string,
+  { archived = false }: { archived?: boolean } = {},
+): Promise<CardDoc> {
   const card = await CardModel.findOne({
     _id: objectId(cardId, "Card"),
-    archived: false,
+    archived,
   }).lean<CardDoc>();
   if (!card) throw notFound("Card");
   await requireBoardMember(ctx, card.boardId.toString()).catch(() => {

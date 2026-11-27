@@ -25,6 +25,11 @@ export function createBuilder() {
       fromList: ListDoc;
       toList: ListDoc;
     }>("MoveCardPayload"),
+    RestoreCardPayloadRef: builder.objectRef<{
+      card: CardDoc;
+      list: ListDoc;
+      board: BoardDoc;
+    }>("RestoreCardPayload"),
   };
 }
 

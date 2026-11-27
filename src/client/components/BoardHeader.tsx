@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@apollo/client/react";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import Avatar from "@mui/material/Avatar";
@@ -14,6 +15,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
@@ -25,6 +27,7 @@ import type { Board } from "../board-moves";
 import { BOARD_BACKGROUNDS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { BoardsQuery, DeleteBoardMutation, UpdateBoardMutation } from "../operations";
+import { ArchivedCardsDialog } from "./ArchivedCardsDialog";
 import { userInitial } from "./CardItem";
 import { ColorSwatches } from "./ColorSwatches";
 import { EditableTitle } from "./EditableTitle";
@@ -35,6 +38,7 @@ export function BoardHeader({ board }: { board: Board }) {
   const router = useRouter();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [updateBoard] = useMutation(UpdateBoardMutation);
   const [deleteBoard, { loading: deleting }] = useMutation(DeleteBoardMutation);
@@ -144,6 +148,18 @@ export function BoardHeader({ board }: { board: Board }) {
       </IconButton>
 
       <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            setArchivedOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <ArchiveOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Archived cards
+        </MenuItem>
+        <Divider />
         <Box sx={{ px: 2, py: 1, maxWidth: 220 }}>
           <Typography variant="caption" color="text.secondary">
             Background
@@ -171,6 +187,7 @@ export function BoardHeader({ board }: { board: Board }) {
       </Menu>
 
       {shareOpen && <ShareDialog board={board} onClose={() => setShareOpen(false)} />}
+      {archivedOpen && <ArchivedCardsDialog board={board} onClose={() => setArchivedOpen(false)} />}
 
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
         <DialogTitle>Delete “{board.title}”?</DialogTitle>

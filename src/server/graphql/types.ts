@@ -1,5 +1,5 @@
 import type { Types } from "mongoose";
-import type { UserDoc } from "../db/models";
+import { CardModel, type CardDoc, type UserDoc } from "../db/models";
 import type { SchemaParts } from "./builder";
 import type { Context } from "./context";
 
@@ -8,7 +8,7 @@ async function loadUsers(ctx: Context, ids: Types.ObjectId[]): Promise<UserDoc[]
   return users.filter((u): u is UserDoc => !!u && !(u instanceof Error));
 }
 
-/** Registers the object types (User, Board, List, Card, MoveCardPayload) on a builder. */
+/** Registers the object types (User, Board, List, Card and mutation payloads) on a builder. */
 export function defineTypes({
   builder,
   UserRef,
@@ -16,6 +16,7 @@ export function defineTypes({
   ListRef,
   CardRef,
   MoveCardPayloadRef,
+  RestoreCardPayloadRef,
 }: SchemaParts) {
   builder.objectType(UserRef, {
     fields: (t) => ({
@@ -45,6 +46,14 @@ export function defineTypes({
         resolve: (b, _args, ctx) => ctx.loaders.listsByBoard.load(b._id.toString()),
       }),
       updatedAt: t.string({ resolve: (b) => b.updatedAt.toISOString() }),
+      archivedCards: t.field({
+        type: [CardRef],
+        description: "Archived cards on this board, most recently archived first.",
+        resolve: (b) =>
+          CardModel.find({ boardId: b._id, archived: true })
+            .sort({ updatedAt: -1 })
+            .lean<CardDoc[]>(),
+      }),
     }),
   });
 
@@ -54,6 +63,7 @@ export function defineTypes({
       title: t.exposeString("title"),
       position: t.exposeString("position"),
       boardId: t.id({ resolve: (l) => l.boardId.toString() }),
+      archived: t.exposeBoolean("archived"),
       cards: t.field({
         type: [CardRef],
         resolve: (l, _args, ctx) => ctx.loaders.cardsByList.load(l._id.toString()),
@@ -71,6 +81,12 @@ export function defineTypes({
       position: t.exposeString("position"),
       listId: t.id({ resolve: (c) => c.listId.toString() }),
       boardId: t.id({ resolve: (c) => c.boardId.toString() }),
+      archived: t.exposeBoolean("archived"),
+      /** The card's list, which may itself be archived. */
+      list: t.field({
+        type: ListRef,
+        resolve: async (c, _args, ctx) => (await ctx.loaders.listById.load(c.listId.toString()))!,
+      }),
       assignees: t.field({
         type: [UserRef],
         resolve: (c, _args, ctx) => loadUsers(ctx, c.assigneeIds),
@@ -83,6 +99,14 @@ export function defineTypes({
       card: t.field({ type: CardRef, resolve: (p) => p.card }),
       fromList: t.field({ type: ListRef, resolve: (p) => p.fromList }),
       toList: t.field({ type: ListRef, resolve: (p) => p.toList }),
+    }),
+  });
+
+  builder.objectType(RestoreCardPayloadRef, {
+    fields: (t) => ({
+      card: t.field({ type: CardRef, resolve: (p) => p.card }),
+      list: t.field({ type: ListRef, resolve: (p) => p.list }),
+      board: t.field({ type: BoardRef, resolve: (p) => p.board }),
     }),
   });
 }

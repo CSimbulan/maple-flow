@@ -1,4 +1,6 @@
 type Board {
+  """Archived cards on this board, most recently archived first."""
+  archivedCards: [Card!]!
   background: String!
   id: ID!
   lists: [List!]!
@@ -10,18 +12,21 @@ type Board {
 }
 
 type Card {
+  archived: Boolean!
   assignees: [User!]!
   boardId: ID!
   description: String!
   dueDate: String
   id: ID!
   labels: [String!]!
+  list: List!
   listId: ID!
   position: String!
   title: String!
 }
 
 type List {
+  archived: Boolean!
   boardId: ID!
   cards: [Card!]!
   id: ID!
@@ -47,6 +52,11 @@ type Mutation {
   moveList(afterId: ID, beforeId: ID, id: ID!): Board!
   removeBoardMember(boardId: ID!, userId: ID!): Board!
   renameList(id: ID!, title: String!): List!
+
+  """
+  Un-archive a card, at the bottom of its original list or of `listId` if given. If the original list is archived too, `listId` is required.
+  """
+  restoreCard(id: ID!, listId: ID): RestoreCardPayload!
   updateBoard(background: String, id: ID!, title: String): Board!
   updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, labels: [String!], title: String): Card!
 }
@@ -55,6 +65,12 @@ type Query {
   board(id: ID!): Board
   boards: [Board!]!
   me: User
+}
+
+type RestoreCardPayload {
+  board: Board!
+  card: Card!
+  list: List!
 }
 
 type User {

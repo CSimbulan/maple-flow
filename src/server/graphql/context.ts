@@ -41,6 +41,10 @@ export function createLoaders() {
     boardById: new DataLoader<string, BoardDoc | null>(async (keys) =>
       byId(keys, await BoardModel.find({ _id: { $in: ids(keys) } }).lean<BoardDoc[]>()),
     ),
+    // Includes archived lists, so an archived card can still show where it came from.
+    listById: new DataLoader<string, ListDoc | null>(async (keys) =>
+      byId(keys, await ListModel.find({ _id: { $in: ids(keys) } }).lean<ListDoc[]>()),
+    ),
     listsByBoard: new DataLoader<string, ListDoc[]>(async (keys) =>
       groupBy(
         keys,

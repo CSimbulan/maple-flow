@@ -5,7 +5,13 @@ function makeCache() {
   return new InMemoryCache({
     typePolicies: {
       // Arrays come back complete from the server (or from optimistic responses), so replace them.
-      Board: { fields: { lists: { merge: false }, members: { merge: false } } },
+      Board: {
+        fields: {
+          lists: { merge: false },
+          members: { merge: false },
+          archivedCards: { merge: false },
+        },
+      },
       List: { fields: { cards: { merge: false } } },
       Card: { fields: { assignees: { merge: false }, labels: { merge: false } } },
     },

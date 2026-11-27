@@ -78,7 +78,15 @@ async function positionIn(
 /** Builds the whole schema on a fresh builder (see createBuilder for why). */
 export function buildSchema() {
   const parts = createBuilder();
-  const { builder, UserRef, BoardRef, ListRef, CardRef, MoveCardPayloadRef } = parts;
+  const {
+    builder,
+    UserRef,
+    BoardRef,
+    ListRef,
+    CardRef,
+    MoveCardPayloadRef,
+    RestoreCardPayloadRef,
+  } = parts;
   defineTypes(parts);
 
   builder.queryType({
@@ -339,6 +347,32 @@ export function buildSchema() {
           const card = await requireCard(ctx, id);
           await CardModel.updateOne({ _id: card._id }, { $set: { archived: true } });
           return (await ListModel.findById(card.listId).lean<ListDoc>())!;
+        },
+      }),
+      restoreCard: t.field({
+        type: RestoreCardPayloadRef,
+        description:
+          "Un-archive a card, at the bottom of its original list or of `listId` if given. " +
+          "If the original list is archived too, `listId` is required.",
+        args: { id: t.arg.id({ required: true }), listId: t.arg.id() },
+        resolve: async (_root, args, ctx) => {
+          const card = await requireCard(ctx, args.id, { archived: true });
+          const list = await ListModel.findOne({
+            _id: objectId(args.listId ?? card.listId.toString(), "List"),
+            archived: false,
+          }).lean<ListDoc>();
+          if (!list) {
+            if (args.listId) throw notFound("List");
+            throw badInput("This card's list is archived. Choose another list to restore it to.");
+          }
+          if (!list.boardId.equals(card.boardId)) throw badInput("Cards can't move between boards");
+          const position = await positionIn(CardModel, { listId: list._id }, null);
+          const restored = (await CardModel.findByIdAndUpdate(
+            card._id,
+            { $set: { archived: false, listId: list._id, position } },
+            { returnDocument: "after" },
+          ).lean<CardDoc>())!;
+          return { card: restored, list, board: await reloadBoard(ctx, card.boardId) };
         },
       }),
     }),

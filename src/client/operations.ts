@@ -227,3 +227,42 @@ export const ArchiveCardMutation = graphql(`
     }
   }
 `);
+
+export const ArchivedCardsQuery = graphql(`
+  query ArchivedCards($id: ID!) {
+    board(id: $id) {
+      id
+      archivedCards {
+        ...CardFields
+        list {
+          id
+          title
+          archived
+        }
+      }
+    }
+  }
+`);
+
+export const RestoreCardMutation = graphql(`
+  mutation RestoreCard($id: ID!, $listId: ID) {
+    restoreCard(id: $id, listId: $listId) {
+      card {
+        ...CardFields
+      }
+      list {
+        id
+        title
+        cards {
+          ...CardFields
+        }
+      }
+      board {
+        id
+        archivedCards {
+          id
+        }
+      }
+    }
+  }
+`);

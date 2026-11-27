@@ -330,3 +330,91 @@ describe("sharing and cards", () => {
     expect((await run(ann, `{ boards { id } }`)).boards).toHaveLength(0);
   });
 });
+
+describe("archived cards", () => {
+  const ARCHIVE = `mutation ($id: ID!) { archiveCard(id: $id) { id } }`;
+  const ARCHIVED = `query ($id: ID!) {
+    board(id: $id) { archivedCards { id title list { title archived } } }
+  }`;
+  const RESTORE = `mutation ($id: ID!, $listId: ID) {
+    restoreCard(id: $id, listId: $listId) {
+      card { title listId }
+      list { title cards { title } }
+      board { archivedCards { id } }
+    }
+  }`;
+
+  it("lists archived cards, newest first, with their original list", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A", "B", "C"]);
+    const [a, b] = [await cardId(board.id, "A"), await cardId(board.id, "B")];
+    await run(ann, ARCHIVE, { id: a });
+    await new Promise((r) => setTimeout(r, 5)); // distinct updatedAt
+    await run(ann, ARCHIVE, { id: b });
+
+    const { board: data } = await run(ann, ARCHIVED, { id: board.id });
+    expect(data.archivedCards.map((c: { title: string }) => c.title)).toEqual(["B", "A"]);
+    expect(data.archivedCards[0].list).toEqual({ title: "To do", archived: false });
+  });
+
+  it("restores a card to the bottom of its original list", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A", "B", "C"]);
+    const a = await cardId(board.id, "A");
+    await run(ann, ARCHIVE, { id: a });
+    expect((await cardTitles(board.id))["To do"]).toEqual(["B", "C"]);
+
+    const { restoreCard } = await run(ann, RESTORE, { id: a });
+    expect(restoreCard.list.title).toBe("To do");
+    expect(restoreCard.list.cards.map((c: { title: string }) => c.title)).toEqual(["B", "C", "A"]);
+    expect(restoreCard.board.archivedCards).toEqual([]);
+    expect((await cardTitles(board.id))["To do"]).toEqual(["B", "C", "A"]);
+  });
+
+  it("restores into another list when asked", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    await addCards(ann, board.lists[2].id, ["Z"]);
+    const a = await cardId(board.id, "A");
+    await run(ann, ARCHIVE, { id: a });
+    await run(ann, RESTORE, { id: a, listId: board.lists[2].id });
+    expect(await cardTitles(board.id)).toEqual({ "To do": [], Doing: [], Done: ["Z", "A"] });
+  });
+
+  it("needs a target list when the original list is archived", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    const a = await cardId(board.id, "A");
+    await run(ann, ARCHIVE, { id: a });
+    await run(ann, `mutation ($id: ID!) { archiveList(id: $id) { id } }`, {
+      id: board.lists[0].id,
+    });
+
+    const { board: data } = await run(ann, ARCHIVED, { id: board.id });
+    expect(data.archivedCards[0].list).toEqual({ title: "To do", archived: true });
+    expect(await errorCode(run(ann, RESTORE, { id: a }))).toBe("BAD_USER_INPUT");
+    // An archived list isn't a valid target either.
+    expect(await errorCode(run(ann, RESTORE, { id: a, listId: board.lists[0].id }))).toBe(
+      "NOT_FOUND",
+    );
+
+    await run(ann, RESTORE, { id: a, listId: board.lists[1].id });
+    expect((await cardTitles(board.id)).Doing).toEqual(["A"]);
+  });
+
+  it("only restores archived cards, for board members, within the same board", async () => {
+    const board = await newBoard();
+    const other = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    const a = await cardId(board.id, "A");
+
+    // Not archived yet.
+    expect(await errorCode(run(ann, RESTORE, { id: a }))).toBe("NOT_FOUND");
+    await run(ann, ARCHIVE, { id: a });
+    expect(await errorCode(run(bob, RESTORE, { id: a }))).toBe("NOT_FOUND");
+    expect((await run(bob, ARCHIVED, { id: board.id })).board).toBeNull();
+    expect(await errorCode(run(ann, RESTORE, { id: a, listId: other.lists[0].id }))).toBe(
+      "BAD_USER_INPUT",
+    );
+  });
+});
