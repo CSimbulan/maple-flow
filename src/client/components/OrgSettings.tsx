@@ -20,6 +20,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
+import { forgetBoardAudiences } from "../board-cache";
 import { errorMessage, useNotify } from "../notify";
 import {
   AddWorkspaceMemberMutation,
@@ -55,11 +56,22 @@ export function OrgSettings({ orgId }: { orgId: string }) {
   const [email, setEmail] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"leave" | "delete" | null>(null);
-  const [addMember, { loading: adding }] = useMutation(AddWorkspaceMemberMutation);
-  const [removeMember] = useMutation(RemoveWorkspaceMemberMutation);
+  // Workspace members can open every board in it, so cached boards' member lists (the card
+  // dialog's assignee choices) are refetched after these.
+  const [addMember, { loading: adding }] = useMutation(AddWorkspaceMemberMutation, {
+    update: (cache) => forgetBoardAudiences(cache),
+  });
+  // The member whose removal is being confirmed. It's kept after the dialog closes, so the
+  // title doesn't go blank while the dialog fades out; `removeOpen` says whether it's showing.
+  const [toRemove, setToRemove] = useState<{ id: string; label: string } | null>(null);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removeMember, { loading: removing }] = useMutation(RemoveWorkspaceMemberMutation, {
+    update: (cache) => forgetBoardAudiences(cache, { assignees: true }),
+  });
   const [renameOrg] = useMutation(RenameWorkspaceMutation);
   // Leaving or deleting changes which organizations you have, so refresh that list.
   const [leaveOrg, { loading: leaving }] = useMutation(RemoveWorkspaceMemberMutation, {
+    update: (cache) => forgetBoardAudiences(cache, { assignees: true }),
     refetchQueries: [WorkspacesQuery],
     awaitRefetchQueries: true,
   });
@@ -163,11 +175,10 @@ export function OrgSettings({ orgId }: { orgId: string }) {
                       <IconButton
                         edge="end"
                         aria-label={`Remove ${m.email}`}
-                        onClick={() =>
-                          removeMember({ variables: { workspaceId: orgId, userId: m.id } })
-                            .then(() => notify(`Removed ${m.email}`, "success"))
-                            .catch((err) => notify(errorMessage(err)))
-                        }
+                        onClick={() => {
+                          setToRemove({ id: m.id, label: m.name ?? m.email });
+                          setRemoveOpen(true);
+                        }}
                       >
                         <PersonRemoveIcon fontSize="small" />
                       </IconButton>
@@ -260,6 +271,28 @@ export function OrgSettings({ orgId }: { orgId: string }) {
         }}
       >
         You&apos;ll lose access to its projects and boards. A member can add you back later.
+      </ConfirmDelete>
+      <ConfirmDelete
+        open={removeOpen}
+        title={`Remove ${toRemove?.label ?? ""} from “${org.name}”?`}
+        confirmLabel="Remove member"
+        busy={removing}
+        onClose={() => setRemoveOpen(false)}
+        onConfirm={async () => {
+          if (!toRemove) return;
+          try {
+            await removeMember({ variables: { workspaceId: orgId, userId: toRemove.id } });
+            notify(`Removed ${toRemove.label}`, "success");
+            setRemoveOpen(false);
+          } catch (err) {
+            notify(errorMessage(err));
+          }
+        }}
+      >
+        They&apos;ll lose access to this workspace&apos;s projects and boards, and be removed from
+        every card they&apos;re assigned to on those boards. Boards they were invited to as a guest
+        stay open to them, along with their assignments there. You can add them back later, but
+        their card assignments won&apos;t come back.
       </ConfirmDelete>
     </PageContainer>
   );

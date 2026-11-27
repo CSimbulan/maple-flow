@@ -32,7 +32,8 @@ export function ConfirmDelete({
       <DialogContent>
         <DialogContentText component="div">{children}</DialogContentText>
       </DialogContent>
-      <DialogActions>
+      {/* Same 24px side inset as the title and text above, and 16px below the buttons. */}
+      <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} autoFocus>
           Cancel
         </Button>
