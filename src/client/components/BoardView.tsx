@@ -40,6 +40,7 @@ import {
   type BoardCard,
   type Columns,
 } from "../board-moves";
+import { useShowOrg } from "../current-org";
 import { errorMessage, useNotify } from "../notify";
 import {
   BoardDetailQuery,
@@ -113,6 +114,8 @@ export function BoardView({ boardId }: { boardId: string }) {
 
 function BoardCanvas({ board }: { board: Board }) {
   const notify = useNotify();
+  // Point the switcher and sidebar at this board's organization.
+  useShowOrg(board.project?.workspace.id);
   const [moveCard] = useMutation(MoveCardMutation);
   const [moveList] = useMutation(MoveListMutation);
   const [createList] = useMutation(CreateListMutation);

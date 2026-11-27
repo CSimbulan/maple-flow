@@ -3,7 +3,8 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { connectDb } from "../src/server/db/connect";
-import { CardModel, UserModel } from "../src/server/db/models";
+import { BoardModel, CardModel, ListModel, UserModel } from "../src/server/db/models";
+import { ensureWorkspace } from "../src/server/db/workspace";
 import { createContext } from "../src/server/graphql/context";
 import { schema } from "../src/server/graphql/schema";
 
@@ -78,13 +79,28 @@ const BOARD = /* GraphQL */ `
   }
 `;
 
-async function newBoard(userId = ann) {
+/** The user's first project, creating their personal workspace if needed. */
+async function projectOf(userId = ann): Promise<string> {
+  await ensureWorkspace(userId);
+  const data = await run(userId, `{ workspaces { projects { id } } }`);
+  return data.workspaces[0].projects[0].id;
+}
+
+async function orgOf(userId = ann): Promise<string> {
+  await ensureWorkspace(userId);
+  return (await run(userId, `{ workspaces { id } }`)).workspaces[0].id;
+}
+
+async function newBoard(userId = ann, projectId?: string) {
   const data = await run(
     userId,
-    `mutation { createBoard(title: "Launch") { id lists { id title } } }`,
+    `mutation ($p: ID!) { createBoard(projectId: $p, title: "Launch") { id lists { id title } } }`,
+    { p: projectId ?? (await projectOf(userId)) },
   );
   return data.createBoard as { id: string; lists: { id: string; title: string }[] };
 }
+
+const PROJECT_BOARDS = `query ($p: ID!) { project(id: $p) { boards { id } } }`;
 
 async function addCards(userId: string, listId: string, titles: string[]) {
   for (const title of titles) {
@@ -121,13 +137,14 @@ describe("boards", () => {
     const board = await newBoard();
     expect(board.lists.map((l) => l.title)).toEqual(["To do", "Doing", "Done"]);
 
-    expect((await run(ann, `{ boards { id } }`)).boards).toHaveLength(1);
-    expect((await run(bob, `{ boards { id } }`)).boards).toHaveLength(0);
+    const p = await projectOf(ann);
+    expect((await run(ann, PROJECT_BOARDS, { p })).project.boards).toHaveLength(1);
+    expect((await run(bob, PROJECT_BOARDS, { p })).project).toBeNull();
     expect((await run(bob, BOARD, { id: board.id })).board).toBeNull();
   });
 
   it("requires sign-in", async () => {
-    expect(await errorCode(run(null, `{ boards { id } }`))).toBe("UNAUTHENTICATED");
+    expect(await errorCode(run(null, `{ workspaces { id } }`))).toBe("UNAUTHENTICATED");
   });
 
   it("hides boards from non-members on mutations", async () => {
@@ -141,7 +158,11 @@ describe("boards", () => {
   });
 
   it("validates input", async () => {
-    const code = await errorCode(run(ann, `mutation { createBoard(title: "   ") { id } }`));
+    const code = await errorCode(
+      run(ann, `mutation ($p: ID!) { createBoard(projectId: $p, title: "   ") { id } }`, {
+        p: await projectOf(ann),
+      }),
+    );
     expect(code).toBe("BAD_USER_INPUT");
   });
 });
@@ -315,7 +336,7 @@ describe("sharing and cards", () => {
     ]);
   });
 
-  it("only lets the owner delete a board", async () => {
+  it("only lets the board's creator or the org owner delete a board", async () => {
     const board = await newBoard();
     await run(
       ann,
@@ -327,7 +348,8 @@ describe("sharing and cards", () => {
     const DELETE = `mutation ($id: ID!) { deleteBoard(id: $id) }`;
     expect(await errorCode(run(bob, DELETE, { id: board.id }))).toBe("FORBIDDEN");
     await run(ann, DELETE, { id: board.id });
-    expect((await run(ann, `{ boards { id } }`)).boards).toHaveLength(0);
+    const p = await projectOf(ann);
+    expect((await run(ann, PROJECT_BOARDS, { p })).project.boards).toHaveLength(0);
   });
 });
 
@@ -556,5 +578,165 @@ describe("permanent delete", () => {
     expect(await errorCode(run(bob, DELETE_CARD, { id: a }))).toBe("NOT_FOUND");
     expect(await errorCode(run(bob, DELETE_LIST, { id: board.lists[0].id }))).toBe("NOT_FOUND");
     expect((await cardTitles(board.id))["To do"]).toEqual(["A"]);
+  });
+});
+
+describe("workspaces and projects", () => {
+  const ADD_MEMBER = `mutation ($o: ID!, $e: String!) {
+    addWorkspaceMember(workspaceId: $o, email: $e) { members { email } }
+  }`;
+  const REMOVE_MEMBER = `mutation ($o: ID!, $u: ID!) {
+    removeWorkspaceMember(workspaceId: $o, userId: $u) { members { email } }
+  }`;
+  const ORGS = `{ workspaces { id name viewerIsOwner projects { name } } }`;
+  const ASSIGN = `mutation ($id: ID!, $a: [ID!]) { updateCard(id: $id, assigneeIds: $a) { id } }`;
+
+  it("gives every user a personal workspace, once", async () => {
+    await ensureWorkspace(ann);
+    await ensureWorkspace(ann);
+    const { workspaces } = await run(ann, ORGS);
+    expect(workspaces).toEqual([
+      expect.objectContaining({
+        name: "Personal",
+        viewerIsOwner: true,
+        projects: [{ name: "General" }],
+      }),
+    ]);
+  });
+
+  it("moves boards from before projects into the owner's workspace, keeping guests", async () => {
+    // A board as it was stored before workspaces existed.
+    const legacy = await BoardModel.create({
+      title: "Old board",
+      ownerId: ann,
+      memberIds: [ann, bob],
+    });
+    await ListModel.create({ boardId: legacy._id, title: "To do", position: "a0" });
+
+    await ensureWorkspace(ann);
+    const moved = await BoardModel.findById(legacy._id).lean();
+    expect(moved!.projectId?.toString()).toBe(await projectOf(ann));
+
+    // Bob was shared on it and still is, as a guest.
+    expect((await run(bob, BOARD, { id: legacy.id })).board.title).toBe("Old board");
+    const shared = await run(bob, `{ sharedBoards { title } }`);
+    expect(shared.sharedBoards).toEqual([{ title: "Old board" }]);
+  });
+
+  it("lets workspace members open every board in it", async () => {
+    const board = await newBoard();
+    const org = await orgOf(ann);
+    expect((await run(bob, BOARD, { id: board.id })).board).toBeNull();
+
+    await run(ann, ADD_MEMBER, { o: org, e: "bob@example.com" });
+    expect((await run(bob, BOARD, { id: board.id })).board.title).toBe("Launch");
+    expect((await run(bob, `{ sharedBoards { id } }`)).sharedBoards).toEqual([]);
+    const { workspaces } = await run(bob, ORGS);
+    // Bob's list includes Ann's workspace (both are called "Personal", so compare ids).
+    expect(workspaces.map((o: { id: string }) => o.id)).toContain(org);
+
+    // Already in the org, so they can't also be added as a guest.
+    const SHARE = `mutation ($b: ID!) { addBoardMember(boardId: $b, email: "bob@example.com") { id } }`;
+    expect(await errorCode(run(ann, SHARE, { b: board.id }))).toBe("BAD_USER_INPUT");
+  });
+
+  it("lets any member add people and projects, but only the owner manage the org", async () => {
+    const org = await orgOf(ann);
+    await run(ann, ADD_MEMBER, { o: org, e: "bob@example.com" });
+    const cat = (await UserModel.create({ email: "cat@example.com", name: "Cat" }))._id.toString();
+
+    // Bob (a member) can add Cat and create and rename a project.
+    await run(bob, ADD_MEMBER, { o: org, e: "cat@example.com" });
+    expect(await errorCode(run(bob, ADD_MEMBER, { o: org, e: "cat@example.com" }))).toBe(
+      "BAD_USER_INPUT",
+    );
+    const created = await run(
+      bob,
+      `mutation ($o: ID!) {
+        createProject(workspaceId: $o, name: "Marketing") { project { id } workspace { projects { name } } }
+      }`,
+      { o: org },
+    );
+    const names = created.createProject.workspace.projects.map((p: { name: string }) => p.name);
+    expect(names).toEqual(["General", "Marketing"]);
+    const marketing = created.createProject.project.id;
+    await run(bob, `mutation ($id: ID!) { renameProject(id: $id, name: "Growth") { name } }`, {
+      id: marketing,
+    });
+
+    // Only Ann can rename or delete the org, delete projects, or remove other members.
+    const RENAME = `mutation ($o: ID!) { renameWorkspace(id: $o, name: "Acme") { name } }`;
+    const DELETE_PROJECT = `mutation ($id: ID!) { deleteProject(id: $id) { id } }`;
+    const DELETE_ORG = `mutation ($o: ID!) { deleteWorkspace(id: $o) }`;
+    expect(await errorCode(run(bob, RENAME, { o: org }))).toBe("FORBIDDEN");
+    expect(await errorCode(run(bob, DELETE_PROJECT, { id: marketing }))).toBe("FORBIDDEN");
+    expect(await errorCode(run(bob, REMOVE_MEMBER, { o: org, u: cat }))).toBe("FORBIDDEN");
+    expect(await errorCode(run(bob, DELETE_ORG, { o: org }))).toBe("FORBIDDEN");
+    expect((await run(ann, RENAME, { o: org })).renameWorkspace.name).toBe("Acme");
+
+    // Members can leave; the owner can't.
+    const left = await run(cat, REMOVE_MEMBER, { o: org, u: cat });
+    expect(left.removeWorkspaceMember.members.map((m: { email: string }) => m.email)).toEqual([
+      "ann@example.com",
+      "bob@example.com",
+    ]);
+    expect(await errorCode(run(ann, REMOVE_MEMBER, { o: org, u: ann }))).toBe("FORBIDDEN");
+  });
+
+  it("removes access and assignments when someone leaves, unless they're a guest", async () => {
+    const org = await orgOf(ann);
+    await run(ann, ADD_MEMBER, { o: org, e: "bob@example.com" });
+    const plain = await newBoard();
+    const guested = await newBoard();
+    for (const board of [plain, guested]) {
+      await addCards(ann, board.lists[0].id, ["Task"]);
+      await run(ann, ASSIGN, { id: await cardId(board.id, "Task"), a: [bob] });
+    }
+    // Bob is also a guest on one board directly.
+    await BoardModel.updateOne({ _id: guested.id }, { $addToSet: { memberIds: bob } });
+
+    await run(ann, REMOVE_MEMBER, { o: org, u: bob });
+    expect((await run(bob, BOARD, { id: plain.id })).board).toBeNull();
+    const plainAfter = await run(ann, BOARD, { id: plain.id });
+    expect(plainAfter.board.lists[0].cards[0].assignees).toEqual([]);
+    expect((await run(bob, BOARD, { id: guested.id })).board.title).toBe("Launch");
+    const guestedAfter = await run(ann, BOARD, { id: guested.id });
+    expect(guestedAfter.board.lists[0].cards[0].assignees).toEqual([{ id: bob }]);
+  });
+
+  it("lets the board's creator or the org owner manage a board", async () => {
+    const org = await orgOf(ann);
+    await run(ann, ADD_MEMBER, { o: org, e: "bob@example.com" });
+    const bobs = await newBoard(bob, await projectOf(ann));
+    const anns = await newBoard(ann);
+    const CAN = `query ($id: ID!) { board(id: $id) { viewerCanManage } }`;
+    expect((await run(bob, CAN, { id: bobs.id })).board.viewerCanManage).toBe(true);
+    expect((await run(ann, CAN, { id: bobs.id })).board.viewerCanManage).toBe(true);
+    expect((await run(bob, CAN, { id: anns.id })).board.viewerCanManage).toBe(false);
+  });
+
+  it("only creates boards in projects the caller belongs to", async () => {
+    const CREATE = `mutation ($p: ID!) { createBoard(projectId: $p, title: "Sneaky") { id } }`;
+    expect(await errorCode(run(bob, CREATE, { p: await projectOf(ann) }))).toBe("NOT_FOUND");
+  });
+
+  it("deletes a project or an workspace with everything in it", async () => {
+    const org = await orgOf(ann);
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+
+    const DELETE_PROJECT = `mutation ($id: ID!) { deleteProject(id: $id) { projects { id } } }`;
+    const after = await run(ann, DELETE_PROJECT, { id: await projectOf(ann) });
+    expect(after.deleteProject.projects).toEqual([]);
+    expect(await BoardModel.countDocuments({ _id: board.id })).toBe(0);
+    expect(await ListModel.countDocuments({ boardId: board.id })).toBe(0);
+    expect(await CardModel.countDocuments({ boardId: board.id })).toBe(0);
+
+    const CREATE_PROJECT = `mutation ($o: ID!) { createProject(workspaceId: $o, name: "X") { project { id } } }`;
+    const second = await run(ann, CREATE_PROJECT, { o: org });
+    await newBoard(ann, second.createProject.project.id);
+    await run(ann, `mutation ($o: ID!) { deleteWorkspace(id: $o) }`, { o: org });
+    expect((await run(ann, ORGS)).workspaces).toEqual([]);
+    expect(await BoardModel.countDocuments({})).toBe(0);
   });
 });

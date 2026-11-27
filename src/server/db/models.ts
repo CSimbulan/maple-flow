@@ -13,10 +13,31 @@ export interface UserDoc extends Timestamps {
   image: string | null;
 }
 
+export interface OrganizationDoc extends Timestamps {
+  _id: Types.ObjectId;
+  name: string;
+  ownerId: Types.ObjectId;
+  /** Everyone in the organization, owner included. They can open every board in its projects. */
+  memberIds: Types.ObjectId[];
+}
+
+export interface ProjectDoc extends Timestamps {
+  _id: Types.ObjectId;
+  orgId: Types.ObjectId;
+  name: string;
+}
+
 export interface BoardDoc extends Timestamps {
   _id: Types.ObjectId;
+  /** Null only for boards created before projects existed, until their owner's next visit. */
+  projectId: Types.ObjectId | null;
   title: string;
+  /** Who created the board. They (and the org owner) can delete it and remove guests. */
   ownerId: Types.ObjectId;
+  /**
+   * People added to this board directly: its creator and guests invited with Share. Members of
+   * the board's organization have access without being listed here.
+   */
   memberIds: Types.ObjectId[];
   background: string;
 }
@@ -53,8 +74,26 @@ const userSchema = new Schema<UserDoc>(
   { timestamps: true },
 );
 
+const organizationSchema = new Schema<OrganizationDoc>(
+  {
+    name: { type: String, required: true, trim: true },
+    ownerId: { type: ObjectId, ref: "User", required: true },
+    memberIds: { type: [ObjectId], ref: "User", default: [], index: true },
+  },
+  { timestamps: true },
+);
+
+const projectSchema = new Schema<ProjectDoc>(
+  {
+    orgId: { type: ObjectId, ref: "Organization", required: true, index: true },
+    name: { type: String, required: true, trim: true },
+  },
+  { timestamps: true },
+);
+
 const boardSchema = new Schema<BoardDoc>(
   {
+    projectId: { type: ObjectId, ref: "Project", default: null, index: true },
     title: { type: String, required: true, trim: true },
     ownerId: { type: ObjectId, ref: "User", required: true },
     memberIds: { type: [ObjectId], ref: "User", default: [], index: true },
@@ -96,6 +135,8 @@ function model<T>(name: string, schema: Schema<T>): Model<T> {
 }
 
 export const UserModel = model("User", userSchema);
+export const OrganizationModel = model("Organization", organizationSchema);
+export const ProjectModel = model("Project", projectSchema);
 export const BoardModel = model("Board", boardSchema);
 export const ListModel = model("List", listSchema);
 export const CardModel = model("Card", cardSchema);

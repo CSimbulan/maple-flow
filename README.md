@@ -1,7 +1,7 @@
 # Maple Flow
 
-A Trello-style project management app: boards, lists and cards with drag and drop, labels, due
-dates, assignees and board sharing.
+A Trello-style project management app: workspaces with projects, boards, lists and cards with
+drag and drop, labels, due dates, assignees, guests, archiving and permanent delete.
 
 **Stack:** Next.js 16 (App Router) · TypeScript · GraphQL (Yoga + Pothos) · Apollo Client 4 ·
 MongoDB (Mongoose) · Auth.js · Material UI 9 · dnd-kit
@@ -65,7 +65,7 @@ Run `npm run codegen` after changing the GraphQL schema (`src/server/graphql/`) 
 
 ```
 src/
-  app/               routes: /signin, /boards, /b/[boardId], /api/graphql, /api/auth/*
+  app/               routes: /signin, /boards, /w/[orgId]/…, /b/[boardId], /api/graphql, /api/auth/*
   server/
     db/              Mongoose connection and models (User, Board, List, Card)
     auth/            Auth.js config; users are upserted into MongoDB at sign-in
@@ -84,13 +84,22 @@ src/
   from the Apollo cache, so drops show instantly and roll back if the server rejects them.
   Mutations that change a collection return the parent (for example `createCard` returns the list
   with its cards), so the cache updates without manual cache writes.
-- **Access control.** Every resolver checks that the caller is a member of the board. Boards you
-  can't see are reported as "not found". Only the owner can delete a board or remove members.
+- **Workspaces and projects.** Every board belongs to a project, and every project to a
+  workspace (stored in MongoDB's `organizations` collection, with `orgId` on projects). Workspace members
+  can open every board in it; a board's Share button adds guests who can open only that board.
+  Any member can add people, projects and boards; only the workspace owner can rename or delete
+  it, remove members or delete projects. A board's creator and the workspace owner can delete the
+  board and remove its guests. The rules live in `src/server/graphql/permissions.ts`, and anything
+  you can't open is reported as "not found".
+- **Personal workspace and old boards.** Opening `/boards` (where sign-in lands) runs
+  `ensureWorkspace`: anyone without a workspace gets one called "Personal" with a "General"
+  project, and boards created before workspaces existed move into their owner's. People those
+  boards were shared with stay on as guests.
 - **Portable GraphQL.** `src/server/graphql` has no Next.js imports. `createGraphQLServer` takes a
   `getUserId(request)` function, so the API can move to a standalone Node server (for example to
   add real-time subscriptions) without changes.
 
 ## Not yet built
 
-Real-time updates between users, an activity log, comments, attachments, search, and restoring
-archived lists and cards.
+Real-time updates between users, an activity log, comments, attachments, search, moving boards
+between projects, and transferring workspace ownership.

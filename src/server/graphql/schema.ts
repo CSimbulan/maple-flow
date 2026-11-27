@@ -16,11 +16,15 @@ import {
 import { createBuilder } from "./builder";
 import type { Context } from "./context";
 import { badInput, forbidden, notFound, objectId, parse } from "./errors";
+import { defineWorkspaceSchema } from "./workspaces";
 import {
-  requireBoardMember,
-  requireBoardOwner,
+  boardAudienceIds,
+  canOpenBoard,
+  requireBoardAccess,
+  requireBoardManager,
   requireCard,
   requireList,
+  requireProject,
   requireUserId,
 } from "./permissions";
 import { defineTypes } from "./types";
@@ -91,6 +95,7 @@ export function buildSchema() {
     DeleteListPayloadRef,
   } = parts;
   defineTypes(parts);
+  defineWorkspaceSchema(parts);
 
   builder.queryType({
     fields: (t) => ({
@@ -99,18 +104,11 @@ export function buildSchema() {
         nullable: true,
         resolve: (_root, _args, ctx) => (ctx.userId ? ctx.loaders.userById.load(ctx.userId) : null),
       }),
-      boards: t.field({
-        type: [BoardRef],
-        resolve: async (_root, _args, ctx) => {
-          const userId = requireUserId(ctx);
-          return BoardModel.find({ memberIds: userId }).sort({ updatedAt: -1 }).lean<BoardDoc[]>();
-        },
-      }),
       board: t.field({
         type: BoardRef,
         nullable: true,
         args: { id: t.arg.id({ required: true }) },
-        resolve: (_root, { id }, ctx) => requireBoardMember(ctx, id).catch(() => null),
+        resolve: (_root, { id }, ctx) => requireBoardAccess(ctx, id).catch(() => null),
       }),
     }),
   });
@@ -120,16 +118,24 @@ export function buildSchema() {
       // ---- Boards ----
       createBoard: t.field({
         type: BoardRef,
-        args: { title: t.arg.string({ required: true }), background: t.arg.string() },
+        args: {
+          projectId: t.arg.id({ required: true }),
+          title: t.arg.string({ required: true }),
+          background: t.arg.string(),
+        },
         resolve: async (_root, args, ctx) => {
           const userId = requireUserId(ctx);
+          const { project } = await requireProject(ctx, args.projectId);
           const input = parse(z.object({ title, background: background.nullish() }), args);
+          // Workspace members get access through the workspace; memberIds holds guests only.
           const board = await BoardModel.create({
+            projectId: project._id,
             title: input.title,
             ...(input.background ? { background: input.background } : {}),
             ownerId: userId,
-            memberIds: [userId],
+            memberIds: [],
           });
+          ctx.loaders.boardsByProject.clear(project._id.toString());
           const positions = initialPositions(DEFAULT_LISTS.length);
           await ListModel.insertMany(
             DEFAULT_LISTS.map((listTitle, i) => ({
@@ -149,7 +155,7 @@ export function buildSchema() {
           background: t.arg.string(),
         },
         resolve: async (_root, args, ctx) => {
-          await requireBoardMember(ctx, args.id);
+          await requireBoardAccess(ctx, args.id);
           const input = parse(
             z.object({ title: title.nullish(), background: background.nullish() }),
             args,
@@ -164,7 +170,7 @@ export function buildSchema() {
       deleteBoard: t.id({
         args: { id: t.arg.id({ required: true }) },
         resolve: async (_root, { id }, ctx) => {
-          await requireBoardOwner(ctx, id);
+          await requireBoardManager(ctx, id);
           await Promise.all([
             CardModel.deleteMany({ boardId: id }),
             ListModel.deleteMany({ boardId: id }),
@@ -177,10 +183,13 @@ export function buildSchema() {
         type: BoardRef,
         args: { boardId: t.arg.id({ required: true }), email: t.arg.string({ required: true }) },
         resolve: async (_root, args, ctx) => {
-          await requireBoardMember(ctx, args.boardId);
+          const board = await requireBoardAccess(ctx, args.boardId);
           const input = parse(z.object({ email }), args);
           const user = await UserModel.findOne({ email: input.email }).lean<UserDoc>();
           if (!user) throw badInput("No one with that email has signed in to Maple Flow yet");
+          if (await canOpenBoard(ctx, board, user._id.toString())) {
+            throw badInput(`${input.email} can already open this board`);
+          }
           await BoardModel.updateOne({ _id: args.boardId }, { $addToSet: { memberIds: user._id } });
           return reloadBoard(ctx, args.boardId);
         },
@@ -189,12 +198,16 @@ export function buildSchema() {
         type: BoardRef,
         args: { boardId: t.arg.id({ required: true }), userId: t.arg.id({ required: true }) },
         resolve: async (_root, args, ctx) => {
-          const board = await requireBoardOwner(ctx, args.boardId);
+          const board = await requireBoardManager(ctx, args.boardId);
           const userId = objectId(args.userId, "User");
-          if (board.ownerId.equals(userId)) throw forbidden("The owner can't be removed");
+          if (board.ownerId.equals(userId)) throw forbidden("The board's creator can't be removed");
           await BoardModel.updateOne({ _id: board._id }, { $pull: { memberIds: userId } });
-          await CardModel.updateMany({ boardId: board._id }, { $pull: { assigneeIds: userId } });
-          return reloadBoard(ctx, board._id);
+          const fresh = await reloadBoard(ctx, board._id);
+          // Workspace members keep access, so only unassign people who actually lost it.
+          if (!(await canOpenBoard(ctx, fresh, args.userId))) {
+            await CardModel.updateMany({ boardId: board._id }, { $pull: { assigneeIds: userId } });
+          }
+          return fresh;
         },
       }),
 
@@ -203,7 +216,7 @@ export function buildSchema() {
         type: BoardRef,
         args: { boardId: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
         resolve: async (_root, args, ctx) => {
-          const board = await requireBoardMember(ctx, args.boardId);
+          const board = await requireBoardAccess(ctx, args.boardId);
           const input = parse(z.object({ title }), args);
           const position = await positionIn(ListModel, { boardId: board._id }, null);
           await ListModel.create({ boardId: board._id, title: input.title, position });
@@ -339,7 +352,7 @@ export function buildSchema() {
           }
           if (input.assigneeIds) {
             const board = (await ctx.loaders.boardById.load(card.boardId.toString()))!;
-            const members = new Set(board.memberIds.map(String));
+            const members = new Set(await boardAudienceIds(ctx, board));
             const unique = [...new Set(input.assigneeIds)];
             if (unique.some((id) => !members.has(id))) {
               throw badInput("Assignees must be members of the board");

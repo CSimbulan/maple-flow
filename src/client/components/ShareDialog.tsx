@@ -2,9 +2,9 @@
 
 import { useMutation } from "@apollo/client/react";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -17,6 +17,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import type { Board } from "../board-moves";
 import { errorMessage, useNotify } from "../notify";
@@ -32,13 +33,17 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
   const [addMember, { loading: adding }] = useMutation(AddBoardMemberMutation);
   const [removeMember] = useMutation(RemoveBoardMemberMutation);
 
+  const org = board.project?.workspace;
+  const guestIds = new Set(board.guests.map((g) => g.id));
+  const orgMembers = board.members.filter((m) => !guestIds.has(m.id));
+
   async function add(e: FormEvent) {
     e.preventDefault();
     setError(null);
     try {
       await addMember({ variables: { boardId: board.id, email: email.trim() } });
       setEmail("");
-      notify("Member added", "success");
+      notify(`Invited ${email.trim()} as a guest`, "success");
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -53,11 +58,13 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
             autoFocus
             size="small"
             type="email"
-            label="Email address"
+            label="Invite a guest by email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             error={!!error}
-            helperText={error ?? "They need to have signed in to Maple Flow once."}
+            helperText={
+              error ?? "Guests can open only this board. They need to have signed in once."
+            }
             fullWidth
             required
           />
@@ -70,58 +77,83 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
             Add
           </Button>
         </Stack>
+        {org && (
+          <Alert severity="info" icon={false} sx={{ mt: 2 }}>
+            Everyone in <strong>{org.name}</strong> can open this board.{" "}
+            <Link href={`/w/${org.id}/settings`} style={{ color: "inherit" }}>
+              Manage members
+            </Link>
+          </Alert>
+        )}
+
         <Typography variant="subtitle2" sx={{ mt: 3 }}>
-          Members
+          Guests ({board.guests.length})
         </Typography>
-        <List dense>
-          {board.members.map((m) => {
-            const isOwner = m.id === board.owner.id;
-            return (
-              <ListItem
+        {board.guests.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+            No guests. Invite people from outside {org ? org.name : "the workspace"} above.
+          </Typography>
+        ) : (
+          <List dense>
+            {board.guests.map((m) => (
+              <PersonRow
                 key={m.id}
-                secondaryAction={
-                  !isOwner && board.viewerIsOwner ? (
-                    <IconButton
-                      edge="end"
-                      aria-label={`Remove ${m.email}`}
-                      onClick={() =>
+                person={m}
+                onRemove={
+                  board.viewerCanManage && m.id !== board.owner.id
+                    ? () =>
                         removeMember({ variables: { boardId: board.id, userId: m.id } }).catch(
                           (err) => notify(errorMessage(err)),
                         )
-                      }
-                    >
-                      <PersonRemoveIcon fontSize="small" />
-                    </IconButton>
-                  ) : null
+                    : undefined
                 }
-              >
-                <ListItemAvatar>
-                  <Avatar src={m.image ?? undefined}>{userInitial(m)}</Avatar>
-                </ListItemAvatar>
-                {/* The owner chip sits beside the name so it can't cover a long email address. */}
-                <ListItemText
-                  primary={
-                    <Stack
-                      component="span"
-                      direction="row"
-                      spacing={1}
-                      sx={{ alignItems: "center" }}
-                    >
-                      <span>{m.name ?? m.email}</span>
-                      {isOwner && <Chip size="small" label="Owner" />}
-                    </Stack>
-                  }
-                  secondary={m.email}
-                  slotProps={{ secondary: { noWrap: true } }}
-                />
-              </ListItem>
-            );
-          })}
-        </List>
+              />
+            ))}
+          </List>
+        )}
+
+        {orgMembers.length > 0 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>
+              Workspace members ({orgMembers.length})
+            </Typography>
+            <List dense>
+              {orgMembers.map((m) => (
+                <PersonRow key={m.id} person={m} />
+              ))}
+            </List>
+          </>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Done</Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+type Person = Board["members"][number];
+
+function PersonRow({ person, onRemove }: { person: Person; onRemove?: () => void }) {
+  return (
+    <ListItem
+      disableGutters
+      secondaryAction={
+        onRemove ? (
+          <IconButton edge="end" aria-label={`Remove ${person.email}`} onClick={onRemove}>
+            <PersonRemoveIcon fontSize="small" />
+          </IconButton>
+        ) : null
+      }
+    >
+      <ListItemAvatar>
+        <Avatar src={person.image ?? undefined}>{userInitial(person)}</Avatar>
+      </ListItemAvatar>
+      <ListItemText
+        primary={person.name ?? person.email}
+        secondary={person.email}
+        slotProps={{ secondary: { noWrap: true } }}
+      />
+    </ListItem>
   );
 }

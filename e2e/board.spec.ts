@@ -21,7 +21,13 @@ test("create a board, add cards, and drag them between lists", async ({ page }) 
   await page.goto("/signin");
   await page.getByLabel("Email").fill(`e2e-${Date.now()}@example.test`);
   await page.getByRole("button", { name: "Sign in (dev)" }).click();
-  await expect(page).toHaveURL(/\/boards$/);
+  // New users land in their own workspace, which starts with a "General" project.
+  await expect(page).toHaveURL(/\/w\/[0-9a-f]{24}$/);
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: /General/ })
+    .click();
+  await expect(page).toHaveURL(/\/w\/[0-9a-f]{24}\/p\/[0-9a-f]{24}$/);
 
   await page.getByText("Create new board").click();
   await page.getByLabel("Board title").fill("E2E board");

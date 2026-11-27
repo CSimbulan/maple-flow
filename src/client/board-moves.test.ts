@@ -36,7 +36,9 @@ const board: Board = {
   id: "b1",
   title: "Board",
   background: "#000000",
-  viewerIsOwner: true,
+  viewerCanManage: true,
+  project: null,
+  guests: [],
   owner: user,
   members: [user],
   lists: [

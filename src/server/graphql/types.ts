@@ -1,9 +1,10 @@
-import type { Types } from "mongoose";
 import { CardModel, ListModel, type CardDoc, type ListDoc, type UserDoc } from "../db/models";
 import type { SchemaParts } from "./builder";
+import { boardAudienceIds, canManageBoard, isOrgMember, orgOfBoard } from "./permissions";
 import type { Context } from "./context";
 
-async function loadUsers(ctx: Context, ids: Types.ObjectId[]): Promise<UserDoc[]> {
+/** Users by id (ObjectIds or strings), skipping any that no longer exist. */
+async function loadUsers(ctx: Context, ids: { toString(): string }[]): Promise<UserDoc[]> {
   const users = await ctx.loaders.userById.loadMany(ids.map(String));
   return users.filter((u): u is UserDoc => !!u && !(u instanceof Error));
 }
@@ -12,6 +13,9 @@ async function loadUsers(ctx: Context, ids: Types.ObjectId[]): Promise<UserDoc[]
 export function defineTypes({
   builder,
   UserRef,
+  WorkspaceRef,
+  ProjectRef,
+  CreateProjectPayloadRef,
   BoardRef,
   ListRef,
   CardRef,
@@ -30,6 +34,49 @@ export function defineTypes({
     }),
   });
 
+  builder.objectType(WorkspaceRef, {
+    fields: (t) => ({
+      id: t.id({ resolve: (o) => o._id.toString() }),
+      name: t.exposeString("name"),
+      owner: t.field({
+        type: UserRef,
+        resolve: async (o, _args, ctx) => (await ctx.loaders.userById.load(o.ownerId.toString()))!,
+      }),
+      members: t.field({
+        type: [UserRef],
+        resolve: (o, _args, ctx) => loadUsers(ctx, o.memberIds),
+      }),
+      viewerIsOwner: t.boolean({ resolve: (o, _args, ctx) => o.ownerId.toString() === ctx.userId }),
+      projects: t.field({
+        type: [ProjectRef],
+        resolve: (o, _args, ctx) => ctx.loaders.projectsByOrg.load(o._id.toString()),
+      }),
+    }),
+  });
+
+  builder.objectType(ProjectRef, {
+    fields: (t) => ({
+      id: t.id({ resolve: (p) => p._id.toString() }),
+      name: t.exposeString("name"),
+      workspace: t.field({
+        type: WorkspaceRef,
+        resolve: async (p, _args, ctx) => (await ctx.loaders.orgById.load(p.orgId.toString()))!,
+      }),
+      boards: t.field({
+        type: [BoardRef],
+        description: "The project's boards, most recently updated first.",
+        resolve: (p, _args, ctx) => ctx.loaders.boardsByProject.load(p._id.toString()),
+      }),
+    }),
+  });
+
+  builder.objectType(CreateProjectPayloadRef, {
+    fields: (t) => ({
+      project: t.field({ type: ProjectRef, resolve: (p) => p.project }),
+      workspace: t.field({ type: WorkspaceRef, resolve: (p) => p.workspace }),
+    }),
+  });
+
   builder.objectType(BoardRef, {
     fields: (t) => ({
       id: t.id({ resolve: (b) => b._id.toString() }),
@@ -39,11 +86,32 @@ export function defineTypes({
         type: UserRef,
         resolve: async (b, _args, ctx) => (await ctx.loaders.userById.load(b.ownerId.toString()))!,
       }),
+      project: t.field({
+        type: ProjectRef,
+        nullable: true,
+        resolve: (b, _args, ctx) =>
+          b.projectId ? ctx.loaders.projectById.load(b.projectId.toString()) : null,
+      }),
       members: t.field({
         type: [UserRef],
-        resolve: (b, _args, ctx) => loadUsers(ctx, b.memberIds),
+        description: "Everyone who can open the board: workspace members plus guests.",
+        resolve: async (b, _args, ctx) => loadUsers(ctx, await boardAudienceIds(ctx, b)),
       }),
-      viewerIsOwner: t.boolean({ resolve: (b, _args, ctx) => b.ownerId.toString() === ctx.userId }),
+      guests: t.field({
+        type: [UserRef],
+        description: "People added to this board directly who aren't in its workspace.",
+        resolve: async (b, _args, ctx) => {
+          const org = await orgOfBoard(ctx, b);
+          return loadUsers(
+            ctx,
+            b.memberIds.filter((id) => !org || !isOrgMember(org, id.toString())),
+          );
+        },
+      }),
+      viewerCanManage: t.boolean({
+        description: "Whether the viewer can delete the board and remove guests.",
+        resolve: (b, _args, ctx) => (ctx.userId ? canManageBoard(ctx, b, ctx.userId) : false),
+      }),
       lists: t.field({
         type: [ListRef],
         resolve: (b, _args, ctx) => ctx.loaders.listsByBoard.load(b._id.toString()),

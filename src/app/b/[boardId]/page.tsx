@@ -6,7 +6,8 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
   const user = await requireUser();
   const { boardId } = await params;
   return (
-    <AppShell user={user}>
+    // Boards need the full width, so the sidebar slides in from the menu button instead.
+    <AppShell user={user} sidebar="drawer">
       <BoardView boardId={boardId} />
     </AppShell>
   );

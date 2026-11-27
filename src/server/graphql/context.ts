@@ -4,10 +4,14 @@ import {
   BoardModel,
   CardModel,
   ListModel,
+  OrganizationModel,
+  ProjectModel,
   UserModel,
   type BoardDoc,
   type CardDoc,
   type ListDoc,
+  type OrganizationDoc,
+  type ProjectDoc,
   type UserDoc,
 } from "../db/models";
 
@@ -37,6 +41,34 @@ export function createLoaders() {
   return {
     userById: new DataLoader<string, UserDoc | null>(async (keys) =>
       byId(keys, await UserModel.find({ _id: { $in: ids(keys) } }).lean<UserDoc[]>()),
+    ),
+    orgById: new DataLoader<string, OrganizationDoc | null>(async (keys) =>
+      byId(
+        keys,
+        await OrganizationModel.find({ _id: { $in: ids(keys) } }).lean<OrganizationDoc[]>(),
+      ),
+    ),
+    projectById: new DataLoader<string, ProjectDoc | null>(async (keys) =>
+      byId(keys, await ProjectModel.find({ _id: { $in: ids(keys) } }).lean<ProjectDoc[]>()),
+    ),
+    projectsByOrg: new DataLoader<string, ProjectDoc[]>(async (keys) =>
+      groupBy(
+        keys,
+        await ProjectModel.find({ orgId: { $in: ids(keys) } })
+          .sort({ name: 1 })
+          .collation({ locale: "en" })
+          .lean<ProjectDoc[]>(),
+        (p) => p.orgId,
+      ),
+    ),
+    boardsByProject: new DataLoader<string, BoardDoc[]>(async (keys) =>
+      groupBy(
+        keys,
+        await BoardModel.find({ projectId: { $in: ids(keys) } })
+          .sort({ updatedAt: -1 })
+          .lean<BoardDoc[]>(),
+        (b) => b.projectId!,
+      ),
     ),
     boardById: new DataLoader<string, BoardDoc | null>(async (keys) =>
       byId(keys, await BoardModel.find({ _id: { $in: ids(keys) } }).lean<BoardDoc[]>()),

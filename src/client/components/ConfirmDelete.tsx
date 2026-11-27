@@ -8,12 +8,13 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import type { ReactNode } from "react";
 
-/** "Are you sure?" step before a permanent delete. Cancel is the default button. */
+/** "Are you sure?" step before a permanent delete (or other drastic step). Cancel is the default. */
 export function ConfirmDelete({
   open,
   title,
   children,
   busy,
+  confirmLabel = "Delete permanently",
   onConfirm,
   onClose,
 }: {
@@ -21,6 +22,7 @@ export function ConfirmDelete({
   title: string;
   children: ReactNode;
   busy?: boolean;
+  confirmLabel?: string;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -35,7 +37,7 @@ export function ConfirmDelete({
           Cancel
         </Button>
         <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
-          Delete permanently
+          {confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>

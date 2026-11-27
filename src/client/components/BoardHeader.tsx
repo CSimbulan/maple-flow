@@ -21,12 +21,13 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Board } from "../board-moves";
 import { BOARD_BACKGROUNDS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
-import { BoardsQuery, DeleteBoardMutation, UpdateBoardMutation } from "../operations";
+import { DeleteBoardMutation, UpdateBoardMutation } from "../operations";
 import { ArchiveDialog } from "./ArchiveDialog";
 import { userInitial } from "./CardItem";
 import { ColorSwatches } from "./ColorSwatches";
@@ -42,6 +43,7 @@ export function BoardHeader({ board }: { board: Board }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [updateBoard] = useMutation(UpdateBoardMutation);
   const [deleteBoard, { loading: deleting }] = useMutation(DeleteBoardMutation);
+  const projectHref = board.project && `/w/${board.project.workspace.id}/p/${board.project.id}`;
 
   const update = (vars: { title?: string; background?: string }) =>
     updateBoard({
@@ -60,15 +62,14 @@ export function BoardHeader({ board }: { board: Board }) {
     try {
       await deleteBoard({
         variables: { id: board.id },
+        // The project page re-fetches its boards when it opens, so evicting is enough here.
         update(cache) {
-          cache.updateQuery({ query: BoardsQuery }, (prev) =>
-            prev ? { boards: prev.boards.filter((b) => b.id !== board.id) } : prev,
-          );
           cache.evict({ id: cache.identify({ __typename: "Board", id: board.id }) });
           cache.gc();
         },
       });
-      router.push("/boards");
+      notify(`Deleted “${board.title}”`, "success");
+      router.push(projectHref ?? "/boards");
     } catch (err) {
       notify(errorMessage(err));
     }
@@ -88,6 +89,23 @@ export function BoardHeader({ board }: { board: Board }) {
     >
       {/* Takes the free space and truncates long titles instead of wrapping. */}
       <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+        {board.project && projectHref && (
+          <Typography
+            component={Link}
+            href={projectHref}
+            variant="caption"
+            noWrap
+            sx={{
+              display: "block",
+              px: 0.75,
+              color: "rgba(255,255,255,0.85)",
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            {board.project.workspace.name} / {board.project.name}
+          </Typography>
+        )}
         <Box sx={{ maxWidth: 480 }}>
           <EditableTitle
             value={board.title}
@@ -172,8 +190,8 @@ export function BoardHeader({ board }: { board: Board }) {
             />
           </Box>
         </Box>
-        {board.viewerIsOwner && <Divider />}
-        {board.viewerIsOwner && (
+        {board.viewerCanManage && <Divider />}
+        {board.viewerCanManage && (
           <MenuItem
             sx={{ color: "error.main" }}
             onClick={() => {

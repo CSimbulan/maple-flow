@@ -5,13 +5,21 @@ type Board {
   """Archived lists on this board, most recently archived first."""
   archivedLists: [List!]!
   background: String!
+
+  """People added to this board directly who aren't in its workspace."""
+  guests: [User!]!
   id: ID!
   lists: [List!]!
+
+  """Everyone who can open the board: workspace members plus guests."""
   members: [User!]!
   owner: User!
+  project: Project
   title: String!
   updatedAt: String!
-  viewerIsOwner: Boolean!
+
+  """Whether the viewer can delete the board and remove guests."""
+  viewerCanManage: Boolean!
 }
 
 type Card {
@@ -26,6 +34,11 @@ type Card {
   listId: ID!
   position: String!
   title: String!
+}
+
+type CreateProjectPayload {
+  project: Project!
+  workspace: Workspace!
 }
 
 type DeleteCardPayload {
@@ -56,11 +69,18 @@ type MoveCardPayload {
 
 type Mutation {
   addBoardMember(boardId: ID!, email: String!): Board!
+
+  """Add someone who has signed in before. Any member can add people."""
+  addWorkspaceMember(email: String!, workspaceId: ID!): Workspace!
   archiveCard(id: ID!): List!
   archiveList(id: ID!): Board!
-  createBoard(background: String, title: String!): Board!
+  createBoard(background: String, projectId: ID!, title: String!): Board!
   createCard(listId: ID!, title: String!): List!
   createList(boardId: ID!, title: String!): Board!
+  createProject(name: String!, workspaceId: ID!): CreateProjectPayload!
+
+  """Create a workspace owned by the viewer, with one project to start in."""
+  createWorkspace(name: String!): Workspace!
   deleteBoard(id: ID!): ID!
 
   """Permanently delete a card (active or archived). Can't be undone."""
@@ -70,10 +90,27 @@ type Mutation {
   Permanently delete a list (active or archived) and every card in it, including archived ones. Can't be undone.
   """
   deleteList(id: ID!): DeleteListPayload!
+
+  """
+  Permanently delete a project with all its boards. Workspace owner only.
+  """
+  deleteProject(id: ID!): Workspace!
+
+  """
+  Permanently delete a workspace with all its projects, boards and cards.
+  """
+  deleteWorkspace(id: ID!): ID!
   moveCard(afterId: ID, beforeId: ID, id: ID!, toListId: ID!): MoveCardPayload!
   moveList(afterId: ID, beforeId: ID, id: ID!): Board!
   removeBoardMember(boardId: ID!, userId: ID!): Board!
+
+  """
+  The owner can remove anyone else; any member can remove themselves (leave). Removed people lose access to the workspace's boards unless they're guests on one.
+  """
+  removeWorkspaceMember(userId: ID!, workspaceId: ID!): Workspace!
   renameList(id: ID!, title: String!): List!
+  renameProject(id: ID!, name: String!): Project!
+  renameWorkspace(id: ID!, name: String!): Workspace!
 
   """
   Un-archive a card, at the bottom of its original list or of `listId` if given. If the original list is archived too, `listId` is required.
@@ -88,10 +125,25 @@ type Mutation {
   updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, labels: [String!], title: String): Card!
 }
 
+type Project {
+  """The project's boards, most recently updated first."""
+  boards: [Board!]!
+  id: ID!
+  name: String!
+  workspace: Workspace!
+}
+
 type Query {
   board(id: ID!): Board
-  boards: [Board!]!
   me: User
+  project(id: ID!): Project
+
+  """Boards the viewer was invited to as a guest, outside their workspaces."""
+  sharedBoards: [Board!]!
+  workspace(id: ID!): Workspace
+
+  """Workspaces the viewer belongs to, oldest first."""
+  workspaces: [Workspace!]!
 }
 
 type RestoreCardPayload {
@@ -110,4 +162,13 @@ type User {
   id: ID!
   image: String
   name: String
+}
+
+type Workspace {
+  id: ID!
+  members: [User!]!
+  name: String!
+  owner: User!
+  projects: [Project!]!
+  viewerIsOwner: Boolean!
 }

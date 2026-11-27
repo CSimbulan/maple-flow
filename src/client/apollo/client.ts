@@ -11,9 +11,12 @@ function makeCache() {
           members: { merge: false },
           archivedCards: { merge: false },
           archivedLists: { merge: false },
+          guests: { merge: false },
         },
       },
       List: { fields: { cards: { merge: false } } },
+      Workspace: { fields: { members: { merge: false }, projects: { merge: false } } },
+      Project: { fields: { boards: { merge: false } } },
       Card: { fields: { assignees: { merge: false }, labels: { merge: false } } },
     },
   });

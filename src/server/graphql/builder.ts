@@ -1,5 +1,12 @@
 import SchemaBuilder from "@pothos/core";
-import type { BoardDoc, CardDoc, ListDoc, UserDoc } from "../db/models";
+import type {
+  BoardDoc,
+  CardDoc,
+  ListDoc,
+  OrganizationDoc,
+  ProjectDoc,
+  UserDoc,
+} from "../db/models";
 import type { Context } from "./context";
 
 /**
@@ -17,6 +24,13 @@ export function createBuilder() {
   return {
     builder,
     UserRef: builder.objectRef<UserDoc>("User"),
+    // Stored as "organizations" in MongoDB (OrganizationDoc); called Workspace in the API.
+    WorkspaceRef: builder.objectRef<OrganizationDoc>("Workspace"),
+    ProjectRef: builder.objectRef<ProjectDoc>("Project"),
+    CreateProjectPayloadRef: builder.objectRef<{
+      project: ProjectDoc;
+      workspace: OrganizationDoc;
+    }>("CreateProjectPayload"),
     BoardRef: builder.objectRef<BoardDoc>("Board"),
     ListRef: builder.objectRef<ListDoc>("List"),
     CardRef: builder.objectRef<CardDoc>("Card"),

@@ -17,13 +17,13 @@ type Documents = {
     "\n  fragment UserFields on User {\n    id\n    name\n    email\n    image\n  }\n": typeof types.UserFieldsFragmentDoc,
     "\n  fragment CardFields on Card {\n    id\n    title\n    description\n    labels\n    dueDate\n    position\n    listId\n    assignees {\n      ...UserFields\n    }\n  }\n": typeof types.CardFieldsFragmentDoc,
     "\n  fragment ListFields on List {\n    id\n    title\n    position\n    cards {\n      ...CardFields\n    }\n  }\n": typeof types.ListFieldsFragmentDoc,
-    "\n  query Boards {\n    boards {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n": typeof types.BoardsDocument,
-    "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerIsOwner\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.BoardDetailDocument,
-    "\n  mutation CreateBoard($title: String!, $background: String) {\n    createBoard(title: $title, background: $background) {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n": typeof types.CreateBoardDocument,
+    "\n  fragment BoardTileFields on Board {\n    id\n    title\n    background\n    updatedAt\n  }\n": typeof types.BoardTileFieldsFragmentDoc,
+    "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerCanManage\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.BoardDetailDocument,
+    "\n  mutation CreateBoard($projectId: ID!, $title: String!, $background: String) {\n    createBoard(projectId: $projectId, title: $title, background: $background) {\n      ...BoardTileFields\n      project {\n        id\n        boards {\n          ...BoardTileFields\n        }\n      }\n    }\n  }\n": typeof types.CreateBoardDocument,
     "\n  mutation UpdateBoard($id: ID!, $title: String, $background: String) {\n    updateBoard(id: $id, title: $title, background: $background) {\n      id\n      title\n      background\n    }\n  }\n": typeof types.UpdateBoardDocument,
     "\n  mutation DeleteBoard($id: ID!) {\n    deleteBoard(id: $id)\n  }\n": typeof types.DeleteBoardDocument,
-    "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n": typeof types.AddBoardMemberDocument,
-    "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.RemoveBoardMemberDocument,
+    "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n    }\n  }\n": typeof types.AddBoardMemberDocument,
+    "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.RemoveBoardMemberDocument,
     "\n  mutation CreateList($boardId: ID!, $title: String!) {\n    createList(boardId: $boardId, title: $title) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.CreateListDocument,
     "\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n": typeof types.RenameListDocument,
     "\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n": typeof types.MoveListDocument,
@@ -38,18 +38,32 @@ type Documents = {
     "\n  mutation RestoreList($id: ID!) {\n    restoreList(id: $id) {\n      list {\n        id\n        title\n        archived\n      }\n      board {\n        id\n        lists {\n          ...ListFields\n        }\n        archivedLists {\n          id\n        }\n      }\n    }\n  }\n": typeof types.RestoreListDocument,
     "\n  mutation DeleteCard($id: ID!) {\n    deleteCard(id: $id) {\n      deletedId\n      list {\n        id\n        cards {\n          id\n        }\n      }\n      board {\n        id\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n": typeof types.DeleteCardDocument,
     "\n  mutation DeleteList($id: ID!) {\n    deleteList(id: $id) {\n      deletedId\n      board {\n        id\n        lists {\n          id\n        }\n        archivedLists {\n          id\n        }\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n": typeof types.DeleteListDocument,
+    "\n  fragment WorkspaceSummaryFields on Workspace {\n    id\n    name\n    viewerIsOwner\n  }\n": typeof types.WorkspaceSummaryFieldsFragmentDoc,
+    "\n  query Workspaces {\n    workspaces {\n      ...WorkspaceSummaryFields\n    }\n  }\n": typeof types.WorkspacesDocument,
+    "\n  query Workspace($id: ID!) {\n    workspace(id: $id) {\n      ...WorkspaceSummaryFields\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n": typeof types.WorkspaceDocument,
+    "\n  query Project($id: ID!) {\n    project(id: $id) {\n      id\n      name\n      workspace {\n        ...WorkspaceSummaryFields\n      }\n      boards {\n        ...BoardTileFields\n      }\n    }\n  }\n": typeof types.ProjectDocument,
+    "\n  query SharedBoards {\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n": typeof types.SharedBoardsDocument,
+    "\n  mutation CreateWorkspace($name: String!) {\n    createWorkspace(name: $name) {\n      ...WorkspaceSummaryFields\n      projects {\n        id\n        name\n      }\n    }\n  }\n": typeof types.CreateWorkspaceDocument,
+    "\n  mutation RenameWorkspace($id: ID!, $name: String!) {\n    renameWorkspace(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n": typeof types.RenameWorkspaceDocument,
+    "\n  mutation DeleteWorkspace($id: ID!) {\n    deleteWorkspace(id: $id)\n  }\n": typeof types.DeleteWorkspaceDocument,
+    "\n  mutation AddWorkspaceMember($workspaceId: ID!, $email: String!) {\n    addWorkspaceMember(workspaceId: $workspaceId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n": typeof types.AddWorkspaceMemberDocument,
+    "\n  mutation RemoveWorkspaceMember($workspaceId: ID!, $userId: ID!) {\n    removeWorkspaceMember(workspaceId: $workspaceId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n": typeof types.RemoveWorkspaceMemberDocument,
+    "\n  mutation CreateProject($workspaceId: ID!, $name: String!) {\n    createProject(workspaceId: $workspaceId, name: $name) {\n      project {\n        id\n        name\n      }\n      workspace {\n        id\n        projects {\n          id\n          name\n          boards {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.CreateProjectDocument,
+    "\n  mutation RenameProject($id: ID!, $name: String!) {\n    renameProject(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n": typeof types.RenameProjectDocument,
+    "\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n": typeof types.DeleteProjectDocument,
+    "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n": typeof types.MeDocument,
 };
 const documents: Documents = {
     "\n  fragment UserFields on User {\n    id\n    name\n    email\n    image\n  }\n": types.UserFieldsFragmentDoc,
     "\n  fragment CardFields on Card {\n    id\n    title\n    description\n    labels\n    dueDate\n    position\n    listId\n    assignees {\n      ...UserFields\n    }\n  }\n": types.CardFieldsFragmentDoc,
     "\n  fragment ListFields on List {\n    id\n    title\n    position\n    cards {\n      ...CardFields\n    }\n  }\n": types.ListFieldsFragmentDoc,
-    "\n  query Boards {\n    boards {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n": types.BoardsDocument,
-    "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerIsOwner\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.BoardDetailDocument,
-    "\n  mutation CreateBoard($title: String!, $background: String) {\n    createBoard(title: $title, background: $background) {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n": types.CreateBoardDocument,
+    "\n  fragment BoardTileFields on Board {\n    id\n    title\n    background\n    updatedAt\n  }\n": types.BoardTileFieldsFragmentDoc,
+    "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerCanManage\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.BoardDetailDocument,
+    "\n  mutation CreateBoard($projectId: ID!, $title: String!, $background: String) {\n    createBoard(projectId: $projectId, title: $title, background: $background) {\n      ...BoardTileFields\n      project {\n        id\n        boards {\n          ...BoardTileFields\n        }\n      }\n    }\n  }\n": types.CreateBoardDocument,
     "\n  mutation UpdateBoard($id: ID!, $title: String, $background: String) {\n    updateBoard(id: $id, title: $title, background: $background) {\n      id\n      title\n      background\n    }\n  }\n": types.UpdateBoardDocument,
     "\n  mutation DeleteBoard($id: ID!) {\n    deleteBoard(id: $id)\n  }\n": types.DeleteBoardDocument,
-    "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n": types.AddBoardMemberDocument,
-    "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.RemoveBoardMemberDocument,
+    "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n    }\n  }\n": types.AddBoardMemberDocument,
+    "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.RemoveBoardMemberDocument,
     "\n  mutation CreateList($boardId: ID!, $title: String!) {\n    createList(boardId: $boardId, title: $title) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.CreateListDocument,
     "\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n": types.RenameListDocument,
     "\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n": types.MoveListDocument,
@@ -64,6 +78,20 @@ const documents: Documents = {
     "\n  mutation RestoreList($id: ID!) {\n    restoreList(id: $id) {\n      list {\n        id\n        title\n        archived\n      }\n      board {\n        id\n        lists {\n          ...ListFields\n        }\n        archivedLists {\n          id\n        }\n      }\n    }\n  }\n": types.RestoreListDocument,
     "\n  mutation DeleteCard($id: ID!) {\n    deleteCard(id: $id) {\n      deletedId\n      list {\n        id\n        cards {\n          id\n        }\n      }\n      board {\n        id\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n": types.DeleteCardDocument,
     "\n  mutation DeleteList($id: ID!) {\n    deleteList(id: $id) {\n      deletedId\n      board {\n        id\n        lists {\n          id\n        }\n        archivedLists {\n          id\n        }\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n": types.DeleteListDocument,
+    "\n  fragment WorkspaceSummaryFields on Workspace {\n    id\n    name\n    viewerIsOwner\n  }\n": types.WorkspaceSummaryFieldsFragmentDoc,
+    "\n  query Workspaces {\n    workspaces {\n      ...WorkspaceSummaryFields\n    }\n  }\n": types.WorkspacesDocument,
+    "\n  query Workspace($id: ID!) {\n    workspace(id: $id) {\n      ...WorkspaceSummaryFields\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n": types.WorkspaceDocument,
+    "\n  query Project($id: ID!) {\n    project(id: $id) {\n      id\n      name\n      workspace {\n        ...WorkspaceSummaryFields\n      }\n      boards {\n        ...BoardTileFields\n      }\n    }\n  }\n": types.ProjectDocument,
+    "\n  query SharedBoards {\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n": types.SharedBoardsDocument,
+    "\n  mutation CreateWorkspace($name: String!) {\n    createWorkspace(name: $name) {\n      ...WorkspaceSummaryFields\n      projects {\n        id\n        name\n      }\n    }\n  }\n": types.CreateWorkspaceDocument,
+    "\n  mutation RenameWorkspace($id: ID!, $name: String!) {\n    renameWorkspace(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n": types.RenameWorkspaceDocument,
+    "\n  mutation DeleteWorkspace($id: ID!) {\n    deleteWorkspace(id: $id)\n  }\n": types.DeleteWorkspaceDocument,
+    "\n  mutation AddWorkspaceMember($workspaceId: ID!, $email: String!) {\n    addWorkspaceMember(workspaceId: $workspaceId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n": types.AddWorkspaceMemberDocument,
+    "\n  mutation RemoveWorkspaceMember($workspaceId: ID!, $userId: ID!) {\n    removeWorkspaceMember(workspaceId: $workspaceId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n": types.RemoveWorkspaceMemberDocument,
+    "\n  mutation CreateProject($workspaceId: ID!, $name: String!) {\n    createProject(workspaceId: $workspaceId, name: $name) {\n      project {\n        id\n        name\n      }\n      workspace {\n        id\n        projects {\n          id\n          name\n          boards {\n            id\n          }\n        }\n      }\n    }\n  }\n": types.CreateProjectDocument,
+    "\n  mutation RenameProject($id: ID!, $name: String!) {\n    renameProject(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n": types.RenameProjectDocument,
+    "\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n": types.DeleteProjectDocument,
+    "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n": types.MeDocument,
 };
 
 /**
@@ -95,15 +123,15 @@ export function graphql(source: "\n  fragment ListFields on List {\n    id\n    
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Boards {\n    boards {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  query Boards {\n    boards {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n"];
+export function graphql(source: "\n  fragment BoardTileFields on Board {\n    id\n    title\n    background\n    updatedAt\n  }\n"): (typeof documents)["\n  fragment BoardTileFields on Board {\n    id\n    title\n    background\n    updatedAt\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerIsOwner\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"): (typeof documents)["\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerIsOwner\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerCanManage\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"): (typeof documents)["\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerCanManage\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation CreateBoard($title: String!, $background: String) {\n    createBoard(title: $title, background: $background) {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  mutation CreateBoard($title: String!, $background: String) {\n    createBoard(title: $title, background: $background) {\n      id\n      title\n      background\n      updatedAt\n    }\n  }\n"];
+export function graphql(source: "\n  mutation CreateBoard($projectId: ID!, $title: String!, $background: String) {\n    createBoard(projectId: $projectId, title: $title, background: $background) {\n      ...BoardTileFields\n      project {\n        id\n        boards {\n          ...BoardTileFields\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateBoard($projectId: ID!, $title: String!, $background: String) {\n    createBoard(projectId: $projectId, title: $title, background: $background) {\n      ...BoardTileFields\n      project {\n        id\n        boards {\n          ...BoardTileFields\n        }\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -115,11 +143,11 @@ export function graphql(source: "\n  mutation DeleteBoard($id: ID!) {\n    delet
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -176,6 +204,62 @@ export function graphql(source: "\n  mutation DeleteCard($id: ID!) {\n    delete
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation DeleteList($id: ID!) {\n    deleteList(id: $id) {\n      deletedId\n      board {\n        id\n        lists {\n          id\n        }\n        archivedLists {\n          id\n        }\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation DeleteList($id: ID!) {\n    deleteList(id: $id) {\n      deletedId\n      board {\n        id\n        lists {\n          id\n        }\n        archivedLists {\n          id\n        }\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment WorkspaceSummaryFields on Workspace {\n    id\n    name\n    viewerIsOwner\n  }\n"): (typeof documents)["\n  fragment WorkspaceSummaryFields on Workspace {\n    id\n    name\n    viewerIsOwner\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Workspaces {\n    workspaces {\n      ...WorkspaceSummaryFields\n    }\n  }\n"): (typeof documents)["\n  query Workspaces {\n    workspaces {\n      ...WorkspaceSummaryFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Workspace($id: ID!) {\n    workspace(id: $id) {\n      ...WorkspaceSummaryFields\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query Workspace($id: ID!) {\n    workspace(id: $id) {\n      ...WorkspaceSummaryFields\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Project($id: ID!) {\n    project(id: $id) {\n      id\n      name\n      workspace {\n        ...WorkspaceSummaryFields\n      }\n      boards {\n        ...BoardTileFields\n      }\n    }\n  }\n"): (typeof documents)["\n  query Project($id: ID!) {\n    project(id: $id) {\n      id\n      name\n      workspace {\n        ...WorkspaceSummaryFields\n      }\n      boards {\n        ...BoardTileFields\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query SharedBoards {\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n"): (typeof documents)["\n  query SharedBoards {\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateWorkspace($name: String!) {\n    createWorkspace(name: $name) {\n      ...WorkspaceSummaryFields\n      projects {\n        id\n        name\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateWorkspace($name: String!) {\n    createWorkspace(name: $name) {\n      ...WorkspaceSummaryFields\n      projects {\n        id\n        name\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RenameWorkspace($id: ID!, $name: String!) {\n    renameWorkspace(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n"): (typeof documents)["\n  mutation RenameWorkspace($id: ID!, $name: String!) {\n    renameWorkspace(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteWorkspace($id: ID!) {\n    deleteWorkspace(id: $id)\n  }\n"): (typeof documents)["\n  mutation DeleteWorkspace($id: ID!) {\n    deleteWorkspace(id: $id)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AddWorkspaceMember($workspaceId: ID!, $email: String!) {\n    addWorkspaceMember(workspaceId: $workspaceId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation AddWorkspaceMember($workspaceId: ID!, $email: String!) {\n    addWorkspaceMember(workspaceId: $workspaceId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RemoveWorkspaceMember($workspaceId: ID!, $userId: ID!) {\n    removeWorkspaceMember(workspaceId: $workspaceId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation RemoveWorkspaceMember($workspaceId: ID!, $userId: ID!) {\n    removeWorkspaceMember(workspaceId: $workspaceId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateProject($workspaceId: ID!, $name: String!) {\n    createProject(workspaceId: $workspaceId, name: $name) {\n      project {\n        id\n        name\n      }\n      workspace {\n        id\n        projects {\n          id\n          name\n          boards {\n            id\n          }\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateProject($workspaceId: ID!, $name: String!) {\n    createProject(workspaceId: $workspaceId, name: $name) {\n      project {\n        id\n        name\n      }\n      workspace {\n        id\n        projects {\n          id\n          name\n          boards {\n            id\n          }\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RenameProject($id: ID!, $name: String!) {\n    renameProject(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n"): (typeof documents)["\n  mutation RenameProject($id: ID!, $name: String!) {\n    renameProject(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

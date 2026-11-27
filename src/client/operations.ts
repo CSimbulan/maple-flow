@@ -35,14 +35,12 @@ export const ListFields = graphql(`
   }
 `);
 
-export const BoardsQuery = graphql(`
-  query Boards {
-    boards {
-      id
-      title
-      background
-      updatedAt
-    }
+export const BoardTileFields = graphql(`
+  fragment BoardTileFields on Board {
+    id
+    title
+    background
+    updatedAt
   }
 `);
 
@@ -52,11 +50,22 @@ export const BoardDetailQuery = graphql(`
       id
       title
       background
-      viewerIsOwner
+      viewerCanManage
+      project {
+        id
+        name
+        workspace {
+          id
+          name
+        }
+      }
       owner {
         ...UserFields
       }
       members {
+        ...UserFields
+      }
+      guests {
         ...UserFields
       }
       lists {
@@ -67,12 +76,15 @@ export const BoardDetailQuery = graphql(`
 `);
 
 export const CreateBoardMutation = graphql(`
-  mutation CreateBoard($title: String!, $background: String) {
-    createBoard(title: $title, background: $background) {
-      id
-      title
-      background
-      updatedAt
+  mutation CreateBoard($projectId: ID!, $title: String!, $background: String) {
+    createBoard(projectId: $projectId, title: $title, background: $background) {
+      ...BoardTileFields
+      project {
+        id
+        boards {
+          ...BoardTileFields
+        }
+      }
     }
   }
 `);
@@ -100,6 +112,9 @@ export const AddBoardMemberMutation = graphql(`
       members {
         ...UserFields
       }
+      guests {
+        ...UserFields
+      }
     }
   }
 `);
@@ -109,6 +124,9 @@ export const RemoveBoardMemberMutation = graphql(`
     removeBoardMember(boardId: $boardId, userId: $userId) {
       id
       members {
+        ...UserFields
+      }
+      guests {
         ...UserFields
       }
       lists {
@@ -340,6 +358,170 @@ export const DeleteListMutation = graphql(`
           id
         }
       }
+    }
+  }
+`);
+
+// ---- Workspaces and projects ----
+
+export const WorkspaceSummaryFields = graphql(`
+  fragment WorkspaceSummaryFields on Workspace {
+    id
+    name
+    viewerIsOwner
+  }
+`);
+
+export const WorkspacesQuery = graphql(`
+  query Workspaces {
+    workspaces {
+      ...WorkspaceSummaryFields
+    }
+  }
+`);
+
+export const WorkspaceQuery = graphql(`
+  query Workspace($id: ID!) {
+    workspace(id: $id) {
+      ...WorkspaceSummaryFields
+      owner {
+        ...UserFields
+      }
+      members {
+        ...UserFields
+      }
+      projects {
+        id
+        name
+        boards {
+          id
+        }
+      }
+    }
+  }
+`);
+
+export const ProjectQuery = graphql(`
+  query Project($id: ID!) {
+    project(id: $id) {
+      id
+      name
+      workspace {
+        ...WorkspaceSummaryFields
+      }
+      boards {
+        ...BoardTileFields
+      }
+    }
+  }
+`);
+
+export const SharedBoardsQuery = graphql(`
+  query SharedBoards {
+    sharedBoards {
+      ...BoardTileFields
+    }
+  }
+`);
+
+export const CreateWorkspaceMutation = graphql(`
+  mutation CreateWorkspace($name: String!) {
+    createWorkspace(name: $name) {
+      ...WorkspaceSummaryFields
+      projects {
+        id
+        name
+      }
+    }
+  }
+`);
+
+export const RenameWorkspaceMutation = graphql(`
+  mutation RenameWorkspace($id: ID!, $name: String!) {
+    renameWorkspace(id: $id, name: $name) {
+      id
+      name
+    }
+  }
+`);
+
+export const DeleteWorkspaceMutation = graphql(`
+  mutation DeleteWorkspace($id: ID!) {
+    deleteWorkspace(id: $id)
+  }
+`);
+
+export const AddWorkspaceMemberMutation = graphql(`
+  mutation AddWorkspaceMember($workspaceId: ID!, $email: String!) {
+    addWorkspaceMember(workspaceId: $workspaceId, email: $email) {
+      id
+      members {
+        ...UserFields
+      }
+    }
+  }
+`);
+
+export const RemoveWorkspaceMemberMutation = graphql(`
+  mutation RemoveWorkspaceMember($workspaceId: ID!, $userId: ID!) {
+    removeWorkspaceMember(workspaceId: $workspaceId, userId: $userId) {
+      id
+      members {
+        ...UserFields
+      }
+    }
+  }
+`);
+
+export const CreateProjectMutation = graphql(`
+  mutation CreateProject($workspaceId: ID!, $name: String!) {
+    createProject(workspaceId: $workspaceId, name: $name) {
+      project {
+        id
+        name
+      }
+      workspace {
+        id
+        projects {
+          id
+          name
+          boards {
+            id
+          }
+        }
+      }
+    }
+  }
+`);
+
+export const RenameProjectMutation = graphql(`
+  mutation RenameProject($id: ID!, $name: String!) {
+    renameProject(id: $id, name: $name) {
+      id
+      name
+    }
+  }
+`);
+
+export const DeleteProjectMutation = graphql(`
+  mutation DeleteProject($id: ID!) {
+    deleteProject(id: $id) {
+      id
+      projects {
+        id
+        name
+        boards {
+          id
+        }
+      }
+    }
+  }
+`);
+
+export const MeQuery = graphql(`
+  query Me {
+    me {
+      ...UserFields
     }
   }
 `);
