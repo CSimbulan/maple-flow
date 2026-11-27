@@ -8,6 +8,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
+import { BRAND_GRADIENT } from "@/brand";
 import { auth, devLoginEnabled, oauthProviders, signIn } from "@/server/auth/config";
 
 const ERRORS: Record<string, string> = {
@@ -36,8 +37,27 @@ export default async function SignInPage({
   const nothingConfigured = oauthProviders.length === 0 && !devLoginEnabled;
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
-      <Paper sx={{ p: 4, width: "100%", maxWidth: 400 }} elevation={2}>
+    <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 2 }}>
+      <Paper
+        elevation={3}
+        sx={{
+          p: 4,
+          width: "100%",
+          maxWidth: 400,
+          position: "relative",
+          overflow: "hidden",
+          // Brand strip along the top, clipped to the card's rounded corners.
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 6,
+            background: BRAND_GRADIENT,
+          },
+        }}
+      >
         <Stack spacing={3}>
           <Box>
             <Typography variant="h4" component="h1" color="primary" sx={{ fontWeight: 700 }}>

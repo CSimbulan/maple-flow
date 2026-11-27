@@ -18,13 +18,14 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { BRAND } from "@/brand";
 import { BOARD_BACKGROUNDS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { BoardsQuery, CreateBoardMutation } from "../operations";
 import { ColorSwatches } from "./ColorSwatches";
 
 const tileSx = {
-  height: 96,
+  height: { xs: 80, sm: 96 },
   borderRadius: 2,
   p: 1.5,
   display: "flex",
@@ -37,7 +38,7 @@ export function BoardsGrid() {
   const [open, setOpen] = useState(false);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 } }}>
       <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
         Your boards
       </Typography>
@@ -46,12 +47,18 @@ export function BoardsGrid() {
         sx={{
           display: "grid",
           gap: 2,
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          // Two columns on phones, more as the screen widens.
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            sm: "repeat(auto-fill, minmax(200px, 1fr))",
+          },
           mt: 2,
         }}
       >
         {loading && !data
-          ? [0, 1, 2].map((i) => <Skeleton key={i} variant="rounded" height={96} />)
+          ? [0, 1, 2].map((i) => (
+              <Skeleton key={i} variant="rounded" sx={{ height: tileSx.height }} />
+            ))
           : data?.boards.map((b) => (
               <ButtonBase
                 key={b.id}
@@ -64,14 +71,31 @@ export function BoardsGrid() {
                   "&:hover": { filter: "brightness(0.92)" },
                 }}
               >
-                <Typography sx={{ fontWeight: 700 }}>{b.title}</Typography>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    textAlign: "left",
+                    overflowWrap: "anywhere",
+                    // Long titles stop at two lines so they stay inside the tile.
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {b.title}
+                </Typography>
               </ButtonBase>
             ))}
         <ButtonBase
           onClick={() => setOpen(true)}
           sx={{
             ...tileSx,
-            bgcolor: "action.hover",
+            bgcolor: BRAND.orangeTint,
+            color: BRAND.orangeDark,
+            border: "1px dashed",
+            borderColor: "secondary.main",
+            "&:hover": { bgcolor: "#ffe0b2" },
             alignItems: "center",
             justifyContent: "center",
             gap: 1,

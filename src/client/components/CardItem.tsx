@@ -14,6 +14,13 @@ import type { LabelColor } from "@/server/db/models";
 import type { BoardCard } from "../board-moves";
 import { LABEL_HEX } from "../colors";
 
+/** Long-pressing to drag on touch screens shouldn't select text or open the callout menu. */
+export const noTouchSelectSx = {
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  WebkitTouchCallout: "none",
+} as const;
+
 export function formatDue(iso: string) {
   // Due dates are stored as UTC midnight; show the calendar date regardless of local time zone.
   return new Date(iso).toLocaleDateString(undefined, {
@@ -103,6 +110,7 @@ export function SortableCard({ card, onOpen }: { card: BoardCard; onOpen: (id: s
         listeners?.onKeyDown?.(e);
       }}
       sx={{
+        ...noTouchSelectSx,
         transform: CSS.Translate.toString(transform),
         transition,
         opacity: isDragging ? 0.35 : 1,

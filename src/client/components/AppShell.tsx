@@ -11,7 +11,7 @@ async function signOutAction() {
 /** Page frame: header plus a full-height main area. Server component. */
 export function AppShell({ user, children }: { user: HeaderUser; children: ReactNode }) {
   return (
-    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+    <Box sx={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
       <AppHeader
         user={{ name: user.name ?? null, email: user.email ?? null, image: user.image ?? null }}
         signOutAction={signOutAction}

@@ -14,16 +14,25 @@ import { useState } from "react";
 import type { BoardCard, BoardList } from "../board-moves";
 import { errorMessage, useNotify } from "../notify";
 import { ArchiveListMutation, CreateCardMutation, RenameListMutation } from "../operations";
-import { SortableCard } from "./CardItem";
+import { BRAND } from "@/brand";
+import { noTouchSelectSx, SortableCard } from "./CardItem";
 import { EditableTitle } from "./EditableTitle";
 import { InlineAdd } from "./InlineAdd";
 
-export const LIST_WIDTH = 272;
+/**
+ * On phones a list fills most of the screen with the next one peeking in, and the board snaps
+ * to each list when swiped. From `sm` up, lists have a fixed width.
+ */
+export const listWidthSx = {
+  width: { xs: "calc(100vw - 56px)", sm: 272 },
+  maxWidth: 320,
+  flexShrink: 0,
+  scrollSnapAlign: "center",
+} as const;
 
 const columnSx = {
-  width: LIST_WIDTH,
-  flexShrink: 0,
-  bgcolor: "#f1f2f4",
+  ...listWidthSx,
+  bgcolor: BRAND.warmWhite,
   borderRadius: 3,
   display: "flex",
   flexDirection: "column",
@@ -75,7 +84,7 @@ export function ListColumn({
         {...attributes}
         {...listeners}
         aria-label={`Drag list ${list.title}`}
-        sx={{ alignItems: "center", px: 1, pt: 1, pb: 0.5, cursor: "grab" }}
+        sx={{ ...noTouchSelectSx, alignItems: "center", px: 1, pt: 1, pb: 0.5, cursor: "grab" }}
       >
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <EditableTitle

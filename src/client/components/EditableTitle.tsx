@@ -11,12 +11,15 @@ export function EditableTitle({
   variant = "subtitle1",
   color,
   ariaLabel,
+  noWrap = false,
 }: {
   value: string;
   onSave: (next: string) => void;
   variant?: TypographyProps["variant"];
   color?: string;
   ariaLabel: string;
+  /** Keep to one line, truncating with an ellipsis, instead of wrapping. */
+  noWrap?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -24,6 +27,8 @@ export function EditableTitle({
     return (
       <Typography
         variant={variant}
+        noWrap={noWrap}
+        title={noWrap ? value : undefined}
         role="button"
         tabIndex={0}
         aria-label={ariaLabel}
@@ -43,7 +48,7 @@ export function EditableTitle({
           py: 0.25,
           borderRadius: 1,
           color,
-          overflowWrap: "anywhere",
+          overflowWrap: noWrap ? undefined : "anywhere",
         }}
       >
         {value}

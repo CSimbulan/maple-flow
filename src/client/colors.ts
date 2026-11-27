@@ -11,13 +11,14 @@ export const LABEL_HEX: Record<LabelColor, string> = {
 
 export const LABELS = Object.keys(LABEL_HEX) as LabelColor[];
 
+// Reds and oranges that all keep white text at 4.5:1 contrast or better. The first is the default.
 export const BOARD_BACKGROUNDS = [
-  "#0079bf",
-  "#2e7d6b",
-  "#b04632",
-  "#89609e",
-  "#cd5a91",
-  "#4bbf6b",
-  "#00aecc",
-  "#838c91",
+  "#c62828",
+  "#c2410c",
+  "#b71c1c",
+  "#bf360c",
+  "#d32f2f",
+  "#b45309",
+  "#9a3412",
+  "#ad1457",
 ];

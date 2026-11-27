@@ -13,7 +13,7 @@ import {
   type ListDoc,
   type UserDoc,
 } from "../db/models";
-import { BoardRef, builder, CardRef, ListRef, MoveCardPayloadRef, UserRef } from "./builder";
+import { createBuilder } from "./builder";
 import type { Context } from "./context";
 import { badInput, forbidden, notFound, objectId, parse } from "./errors";
 import {
@@ -23,7 +23,7 @@ import {
   requireList,
   requireUserId,
 } from "./permissions";
-import "./types";
+import { defineTypes } from "./types";
 
 const title = z.string().trim().min(1, "Title can't be empty").max(200);
 const background = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Background must be a hex color");
@@ -75,266 +75,276 @@ async function positionIn(
   return plan.position;
 }
 
-builder.queryType({
-  fields: (t) => ({
-    me: t.field({
-      type: UserRef,
-      nullable: true,
-      resolve: (_root, _args, ctx) => (ctx.userId ? ctx.loaders.userById.load(ctx.userId) : null),
-    }),
-    boards: t.field({
-      type: [BoardRef],
-      resolve: async (_root, _args, ctx) => {
-        const userId = requireUserId(ctx);
-        return BoardModel.find({ memberIds: userId }).sort({ updatedAt: -1 }).lean<BoardDoc[]>();
-      },
-    }),
-    board: t.field({
-      type: BoardRef,
-      nullable: true,
-      args: { id: t.arg.id({ required: true }) },
-      resolve: (_root, { id }, ctx) => requireBoardMember(ctx, id).catch(() => null),
-    }),
-  }),
-});
+/** Builds the whole schema on a fresh builder (see createBuilder for why). */
+export function buildSchema() {
+  const parts = createBuilder();
+  const { builder, UserRef, BoardRef, ListRef, CardRef, MoveCardPayloadRef } = parts;
+  defineTypes(parts);
 
-builder.mutationType({
-  fields: (t) => ({
-    // ---- Boards ----
-    createBoard: t.field({
-      type: BoardRef,
-      args: { title: t.arg.string({ required: true }), background: t.arg.string() },
-      resolve: async (_root, args, ctx) => {
-        const userId = requireUserId(ctx);
-        const input = parse(z.object({ title, background: background.nullish() }), args);
-        const board = await BoardModel.create({
-          title: input.title,
-          ...(input.background ? { background: input.background } : {}),
-          ownerId: userId,
-          memberIds: [userId],
-        });
-        const positions = initialPositions(DEFAULT_LISTS.length);
-        await ListModel.insertMany(
-          DEFAULT_LISTS.map((listTitle, i) => ({
-            boardId: board._id,
-            title: listTitle,
-            position: positions[i],
-          })),
-        );
-        return reloadBoard(ctx, board._id);
-      },
+  builder.queryType({
+    fields: (t) => ({
+      me: t.field({
+        type: UserRef,
+        nullable: true,
+        resolve: (_root, _args, ctx) => (ctx.userId ? ctx.loaders.userById.load(ctx.userId) : null),
+      }),
+      boards: t.field({
+        type: [BoardRef],
+        resolve: async (_root, _args, ctx) => {
+          const userId = requireUserId(ctx);
+          return BoardModel.find({ memberIds: userId }).sort({ updatedAt: -1 }).lean<BoardDoc[]>();
+        },
+      }),
+      board: t.field({
+        type: BoardRef,
+        nullable: true,
+        args: { id: t.arg.id({ required: true }) },
+        resolve: (_root, { id }, ctx) => requireBoardMember(ctx, id).catch(() => null),
+      }),
     }),
-    updateBoard: t.field({
-      type: BoardRef,
-      args: {
-        id: t.arg.id({ required: true }),
-        title: t.arg.string(),
-        background: t.arg.string(),
-      },
-      resolve: async (_root, args, ctx) => {
-        await requireBoardMember(ctx, args.id);
-        const input = parse(
-          z.object({ title: title.nullish(), background: background.nullish() }),
-          args,
-        );
-        const $set: Record<string, unknown> = {};
-        if (input.title) $set.title = input.title;
-        if (input.background) $set.background = input.background;
-        await BoardModel.updateOne({ _id: args.id }, { $set });
-        return reloadBoard(ctx, args.id);
-      },
-    }),
-    deleteBoard: t.id({
-      args: { id: t.arg.id({ required: true }) },
-      resolve: async (_root, { id }, ctx) => {
-        await requireBoardOwner(ctx, id);
-        await Promise.all([
-          CardModel.deleteMany({ boardId: id }),
-          ListModel.deleteMany({ boardId: id }),
-          BoardModel.deleteOne({ _id: id }),
-        ]);
-        return id;
-      },
-    }),
-    addBoardMember: t.field({
-      type: BoardRef,
-      args: { boardId: t.arg.id({ required: true }), email: t.arg.string({ required: true }) },
-      resolve: async (_root, args, ctx) => {
-        await requireBoardMember(ctx, args.boardId);
-        const input = parse(z.object({ email }), args);
-        const user = await UserModel.findOne({ email: input.email }).lean<UserDoc>();
-        if (!user) throw badInput("No one with that email has signed in to Maple Flow yet");
-        await BoardModel.updateOne({ _id: args.boardId }, { $addToSet: { memberIds: user._id } });
-        return reloadBoard(ctx, args.boardId);
-      },
-    }),
-    removeBoardMember: t.field({
-      type: BoardRef,
-      args: { boardId: t.arg.id({ required: true }), userId: t.arg.id({ required: true }) },
-      resolve: async (_root, args, ctx) => {
-        const board = await requireBoardOwner(ctx, args.boardId);
-        const userId = objectId(args.userId, "User");
-        if (board.ownerId.equals(userId)) throw forbidden("The owner can't be removed");
-        await BoardModel.updateOne({ _id: board._id }, { $pull: { memberIds: userId } });
-        await CardModel.updateMany({ boardId: board._id }, { $pull: { assigneeIds: userId } });
-        return reloadBoard(ctx, board._id);
-      },
-    }),
+  });
 
-    // ---- Lists ----
-    createList: t.field({
-      type: BoardRef,
-      args: { boardId: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
-      resolve: async (_root, args, ctx) => {
-        const board = await requireBoardMember(ctx, args.boardId);
-        const input = parse(z.object({ title }), args);
-        const position = await positionIn(ListModel, { boardId: board._id }, null);
-        await ListModel.create({ boardId: board._id, title: input.title, position });
-        return reloadBoard(ctx, board._id);
-      },
-    }),
-    renameList: t.field({
-      type: ListRef,
-      args: { id: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
-      resolve: async (_root, args, ctx) => {
-        const list = await requireList(ctx, args.id);
-        const input = parse(z.object({ title }), args);
-        return (await ListModel.findByIdAndUpdate(
-          list._id,
-          { $set: { title: input.title } },
-          { returnDocument: "after" },
-        ).lean<ListDoc>())!;
-      },
-    }),
-    moveList: t.field({
-      type: BoardRef,
-      args: { id: t.arg.id({ required: true }), beforeId: t.arg.id(), afterId: t.arg.id() },
-      resolve: async (_root, args, ctx) => {
-        const list = await requireList(ctx, args.id);
-        const position = await positionIn(
-          ListModel,
-          { boardId: list.boardId },
-          list._id,
-          args.beforeId,
-          args.afterId,
-        );
-        await ListModel.updateOne({ _id: list._id }, { $set: { position } });
-        return reloadBoard(ctx, list.boardId);
-      },
-    }),
-    archiveList: t.field({
-      type: BoardRef,
-      args: { id: t.arg.id({ required: true }) },
-      resolve: async (_root, { id }, ctx) => {
-        const list = await requireList(ctx, id);
-        await ListModel.updateOne({ _id: list._id }, { $set: { archived: true } });
-        return reloadBoard(ctx, list.boardId);
-      },
-    }),
+  builder.mutationType({
+    fields: (t) => ({
+      // ---- Boards ----
+      createBoard: t.field({
+        type: BoardRef,
+        args: { title: t.arg.string({ required: true }), background: t.arg.string() },
+        resolve: async (_root, args, ctx) => {
+          const userId = requireUserId(ctx);
+          const input = parse(z.object({ title, background: background.nullish() }), args);
+          const board = await BoardModel.create({
+            title: input.title,
+            ...(input.background ? { background: input.background } : {}),
+            ownerId: userId,
+            memberIds: [userId],
+          });
+          const positions = initialPositions(DEFAULT_LISTS.length);
+          await ListModel.insertMany(
+            DEFAULT_LISTS.map((listTitle, i) => ({
+              boardId: board._id,
+              title: listTitle,
+              position: positions[i],
+            })),
+          );
+          return reloadBoard(ctx, board._id);
+        },
+      }),
+      updateBoard: t.field({
+        type: BoardRef,
+        args: {
+          id: t.arg.id({ required: true }),
+          title: t.arg.string(),
+          background: t.arg.string(),
+        },
+        resolve: async (_root, args, ctx) => {
+          await requireBoardMember(ctx, args.id);
+          const input = parse(
+            z.object({ title: title.nullish(), background: background.nullish() }),
+            args,
+          );
+          const $set: Record<string, unknown> = {};
+          if (input.title) $set.title = input.title;
+          if (input.background) $set.background = input.background;
+          await BoardModel.updateOne({ _id: args.id }, { $set });
+          return reloadBoard(ctx, args.id);
+        },
+      }),
+      deleteBoard: t.id({
+        args: { id: t.arg.id({ required: true }) },
+        resolve: async (_root, { id }, ctx) => {
+          await requireBoardOwner(ctx, id);
+          await Promise.all([
+            CardModel.deleteMany({ boardId: id }),
+            ListModel.deleteMany({ boardId: id }),
+            BoardModel.deleteOne({ _id: id }),
+          ]);
+          return id;
+        },
+      }),
+      addBoardMember: t.field({
+        type: BoardRef,
+        args: { boardId: t.arg.id({ required: true }), email: t.arg.string({ required: true }) },
+        resolve: async (_root, args, ctx) => {
+          await requireBoardMember(ctx, args.boardId);
+          const input = parse(z.object({ email }), args);
+          const user = await UserModel.findOne({ email: input.email }).lean<UserDoc>();
+          if (!user) throw badInput("No one with that email has signed in to Maple Flow yet");
+          await BoardModel.updateOne({ _id: args.boardId }, { $addToSet: { memberIds: user._id } });
+          return reloadBoard(ctx, args.boardId);
+        },
+      }),
+      removeBoardMember: t.field({
+        type: BoardRef,
+        args: { boardId: t.arg.id({ required: true }), userId: t.arg.id({ required: true }) },
+        resolve: async (_root, args, ctx) => {
+          const board = await requireBoardOwner(ctx, args.boardId);
+          const userId = objectId(args.userId, "User");
+          if (board.ownerId.equals(userId)) throw forbidden("The owner can't be removed");
+          await BoardModel.updateOne({ _id: board._id }, { $pull: { memberIds: userId } });
+          await CardModel.updateMany({ boardId: board._id }, { $pull: { assigneeIds: userId } });
+          return reloadBoard(ctx, board._id);
+        },
+      }),
 
-    // ---- Cards ----
-    createCard: t.field({
-      type: ListRef,
-      args: { listId: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
-      resolve: async (_root, args, ctx) => {
-        const list = await requireList(ctx, args.listId);
-        const input = parse(z.object({ title }), args);
-        const position = await positionIn(CardModel, { listId: list._id }, null);
-        await CardModel.create({
-          boardId: list.boardId,
-          listId: list._id,
-          title: input.title,
-          position,
-        });
-        return list;
-      },
-    }),
-    updateCard: t.field({
-      type: CardRef,
-      args: {
-        id: t.arg.id({ required: true }),
-        title: t.arg.string(),
-        description: t.arg.string(),
-        labels: t.arg.stringList(),
-        dueDate: t.arg.string(),
-        assigneeIds: t.arg.idList(),
-      },
-      resolve: async (_root, args, ctx) => {
-        const card = await requireCard(ctx, args.id);
-        const input = parse(
-          z.object({
-            title: title.nullish(),
-            description: description.nullish(),
-            labels: labels.nullish(),
-            dueDate: dueDate.optional(),
-            assigneeIds: z.array(z.string()).nullish(),
-          }),
-          args,
-        );
-        const $set: Record<string, unknown> = {};
-        if (input.title) $set.title = input.title;
-        if (input.description != null) $set.description = input.description;
-        if (input.labels) $set.labels = [...new Set(input.labels)];
-        // An explicit null clears the due date; leaving the argument out keeps it.
-        if (input.dueDate !== undefined) {
-          $set.dueDate = input.dueDate ? new Date(input.dueDate) : null;
-        }
-        if (input.assigneeIds) {
-          const board = (await ctx.loaders.boardById.load(card.boardId.toString()))!;
-          const members = new Set(board.memberIds.map(String));
-          const unique = [...new Set(input.assigneeIds)];
-          if (unique.some((id) => !members.has(id))) {
-            throw badInput("Assignees must be members of the board");
+      // ---- Lists ----
+      createList: t.field({
+        type: BoardRef,
+        args: { boardId: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
+        resolve: async (_root, args, ctx) => {
+          const board = await requireBoardMember(ctx, args.boardId);
+          const input = parse(z.object({ title }), args);
+          const position = await positionIn(ListModel, { boardId: board._id }, null);
+          await ListModel.create({ boardId: board._id, title: input.title, position });
+          return reloadBoard(ctx, board._id);
+        },
+      }),
+      renameList: t.field({
+        type: ListRef,
+        args: { id: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
+        resolve: async (_root, args, ctx) => {
+          const list = await requireList(ctx, args.id);
+          const input = parse(z.object({ title }), args);
+          return (await ListModel.findByIdAndUpdate(
+            list._id,
+            { $set: { title: input.title } },
+            { returnDocument: "after" },
+          ).lean<ListDoc>())!;
+        },
+      }),
+      moveList: t.field({
+        type: BoardRef,
+        args: { id: t.arg.id({ required: true }), beforeId: t.arg.id(), afterId: t.arg.id() },
+        resolve: async (_root, args, ctx) => {
+          const list = await requireList(ctx, args.id);
+          const position = await positionIn(
+            ListModel,
+            { boardId: list.boardId },
+            list._id,
+            args.beforeId,
+            args.afterId,
+          );
+          await ListModel.updateOne({ _id: list._id }, { $set: { position } });
+          return reloadBoard(ctx, list.boardId);
+        },
+      }),
+      archiveList: t.field({
+        type: BoardRef,
+        args: { id: t.arg.id({ required: true }) },
+        resolve: async (_root, { id }, ctx) => {
+          const list = await requireList(ctx, id);
+          await ListModel.updateOne({ _id: list._id }, { $set: { archived: true } });
+          return reloadBoard(ctx, list.boardId);
+        },
+      }),
+
+      // ---- Cards ----
+      createCard: t.field({
+        type: ListRef,
+        args: { listId: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
+        resolve: async (_root, args, ctx) => {
+          const list = await requireList(ctx, args.listId);
+          const input = parse(z.object({ title }), args);
+          const position = await positionIn(CardModel, { listId: list._id }, null);
+          await CardModel.create({
+            boardId: list.boardId,
+            listId: list._id,
+            title: input.title,
+            position,
+          });
+          return list;
+        },
+      }),
+      updateCard: t.field({
+        type: CardRef,
+        args: {
+          id: t.arg.id({ required: true }),
+          title: t.arg.string(),
+          description: t.arg.string(),
+          labels: t.arg.stringList(),
+          dueDate: t.arg.string(),
+          assigneeIds: t.arg.idList(),
+        },
+        resolve: async (_root, args, ctx) => {
+          const card = await requireCard(ctx, args.id);
+          const input = parse(
+            z.object({
+              title: title.nullish(),
+              description: description.nullish(),
+              labels: labels.nullish(),
+              dueDate: dueDate.optional(),
+              assigneeIds: z.array(z.string()).nullish(),
+            }),
+            args,
+          );
+          const $set: Record<string, unknown> = {};
+          if (input.title) $set.title = input.title;
+          if (input.description != null) $set.description = input.description;
+          if (input.labels) $set.labels = [...new Set(input.labels)];
+          // An explicit null clears the due date; leaving the argument out keeps it.
+          if (input.dueDate !== undefined) {
+            $set.dueDate = input.dueDate ? new Date(input.dueDate) : null;
           }
-          $set.assigneeIds = unique;
-        }
-        return (await CardModel.findByIdAndUpdate(
-          card._id,
-          { $set },
-          {
-            returnDocument: "after",
-          },
-        ).lean<CardDoc>())!;
-      },
+          if (input.assigneeIds) {
+            const board = (await ctx.loaders.boardById.load(card.boardId.toString()))!;
+            const members = new Set(board.memberIds.map(String));
+            const unique = [...new Set(input.assigneeIds)];
+            if (unique.some((id) => !members.has(id))) {
+              throw badInput("Assignees must be members of the board");
+            }
+            $set.assigneeIds = unique;
+          }
+          return (await CardModel.findByIdAndUpdate(
+            card._id,
+            { $set },
+            {
+              returnDocument: "after",
+            },
+          ).lean<CardDoc>())!;
+        },
+      }),
+      moveCard: t.field({
+        type: MoveCardPayloadRef,
+        args: {
+          id: t.arg.id({ required: true }),
+          toListId: t.arg.id({ required: true }),
+          beforeId: t.arg.id(),
+          afterId: t.arg.id(),
+        },
+        resolve: async (_root, args, ctx) => {
+          const card = await requireCard(ctx, args.id);
+          const fromList = (await ListModel.findById(card.listId).lean<ListDoc>())!;
+          const toList = await requireList(ctx, args.toListId);
+          if (!toList.boardId.equals(card.boardId))
+            throw badInput("Cards can't move between boards");
+          const position = await positionIn(
+            CardModel,
+            { listId: toList._id },
+            card._id,
+            args.beforeId,
+            args.afterId,
+          );
+          const moved = (await CardModel.findByIdAndUpdate(
+            card._id,
+            { $set: { listId: toList._id, position } },
+            { returnDocument: "after" },
+          ).lean<CardDoc>())!;
+          return { card: moved, fromList, toList };
+        },
+      }),
+      archiveCard: t.field({
+        type: ListRef,
+        args: { id: t.arg.id({ required: true }) },
+        resolve: async (_root, { id }, ctx) => {
+          const card = await requireCard(ctx, id);
+          await CardModel.updateOne({ _id: card._id }, { $set: { archived: true } });
+          return (await ListModel.findById(card.listId).lean<ListDoc>())!;
+        },
+      }),
     }),
-    moveCard: t.field({
-      type: MoveCardPayloadRef,
-      args: {
-        id: t.arg.id({ required: true }),
-        toListId: t.arg.id({ required: true }),
-        beforeId: t.arg.id(),
-        afterId: t.arg.id(),
-      },
-      resolve: async (_root, args, ctx) => {
-        const card = await requireCard(ctx, args.id);
-        const fromList = (await ListModel.findById(card.listId).lean<ListDoc>())!;
-        const toList = await requireList(ctx, args.toListId);
-        if (!toList.boardId.equals(card.boardId)) throw badInput("Cards can't move between boards");
-        const position = await positionIn(
-          CardModel,
-          { listId: toList._id },
-          card._id,
-          args.beforeId,
-          args.afterId,
-        );
-        const moved = (await CardModel.findByIdAndUpdate(
-          card._id,
-          { $set: { listId: toList._id, position } },
-          { returnDocument: "after" },
-        ).lean<CardDoc>())!;
-        return { card: moved, fromList, toList };
-      },
-    }),
-    archiveCard: t.field({
-      type: ListRef,
-      args: { id: t.arg.id({ required: true }) },
-      resolve: async (_root, { id }, ctx) => {
-        const card = await requireCard(ctx, id);
-        await CardModel.updateOne({ _id: card._id }, { $set: { archived: true } });
-        return (await ListModel.findById(card.listId).lean<ListDoc>())!;
-      },
-    }),
-  }),
-});
+  });
 
-export const schema = lexicographicSortSchema(builder.toSchema());
+  return lexicographicSortSchema(builder.toSchema());
+}
+
+export const schema = buildSchema();

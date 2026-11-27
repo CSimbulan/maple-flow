@@ -20,6 +20,7 @@ import type { Board, BoardCard } from "../board-moves";
 import { LABEL_HEX, LABELS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { ArchiveCardMutation, UpdateCardMutation } from "../operations";
+import { useIsPhone } from "../useIsPhone";
 import { userInitial } from "./CardItem";
 
 type Member = Board["members"][number];
@@ -34,6 +35,7 @@ export function CardDialog({
   onClose: () => void;
 }) {
   const notify = useNotify();
+  const isPhone = useIsPhone();
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
   const [labels, setLabels] = useState<string[]>(card.labels);
@@ -76,8 +78,12 @@ export function CardDialog({
     setLabels((cur) => (cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l]));
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <form onSubmit={save}>
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm" fullScreen={isPhone}>
+      {/* Column layout so that, full screen on phones, the actions sit at the bottom. */}
+      <form
+        onSubmit={save}
+        style={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0 }}
+      >
         <DialogTitle sx={{ pb: 1 }}>
           <TextField
             value={title}
@@ -97,7 +103,7 @@ export function CardDialog({
               <Typography variant="subtitle2" gutterBottom>
                 Labels
               </Typography>
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, p: 0.5 }}>
                 {LABELS.map((l) => {
                   const on = labels.includes(l);
                   return (

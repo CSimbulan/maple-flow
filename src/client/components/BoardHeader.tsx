@@ -74,19 +74,35 @@ export function BoardHeader({ board }: { board: Board }) {
     <Stack
       direction="row"
       spacing={1}
-      sx={{ alignItems: "center", px: 2, py: 1, bgcolor: "rgba(0,0,0,0.24)", color: "#fff" }}
+      sx={{
+        alignItems: "center",
+        px: { xs: 1, sm: 2 },
+        py: 1,
+        bgcolor: "rgba(0,0,0,0.24)",
+        color: "#fff",
+      }}
     >
-      <Box sx={{ minWidth: 0, maxWidth: 480 }}>
-        <EditableTitle
-          value={board.title}
-          ariaLabel="Board title"
-          variant="h6"
-          color="#fff"
-          onSave={(title) => update({ title })}
-        />
+      {/* Takes the free space and truncates long titles instead of wrapping. */}
+      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+        <Box sx={{ maxWidth: 480 }}>
+          <EditableTitle
+            value={board.title}
+            ariaLabel="Board title"
+            variant="h6"
+            color="#fff"
+            noWrap
+            onSave={(title) => update({ title })}
+          />
+        </Box>
       </Box>
-      <Box sx={{ flexGrow: 1 }} />
-      <AvatarGroup max={5} sx={{ "& .MuiAvatar-root": { width: 28, height: 28, fontSize: 13 } }}>
+      {/* Members are listed in the share dialog; phones skip the avatar row to save space. */}
+      <AvatarGroup
+        max={5}
+        sx={{
+          display: { xs: "none", sm: "flex" },
+          "& .MuiAvatar-root": { width: 28, height: 28, fontSize: 13 },
+        }}
+      >
         {board.members.map((m) => (
           <Tooltip key={m.id} title={m.name ?? m.email}>
             <Avatar src={m.image ?? undefined} alt={m.name ?? m.email}>
@@ -99,6 +115,8 @@ export function BoardHeader({ board }: { board: Board }) {
         startIcon={<PersonAddIcon />}
         onClick={() => setShareOpen(true)}
         sx={{
+          display: { xs: "none", sm: "inline-flex" },
+          flexShrink: 0,
           color: "#fff",
           bgcolor: "rgba(255,255,255,0.2)",
           "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
@@ -106,6 +124,17 @@ export function BoardHeader({ board }: { board: Board }) {
       >
         Share
       </Button>
+      <IconButton
+        aria-label="Share board"
+        onClick={() => setShareOpen(true)}
+        sx={{
+          display: { xs: "inline-flex", sm: "none" },
+          color: "#fff",
+          bgcolor: "rgba(255,255,255,0.2)",
+        }}
+      >
+        <PersonAddIcon fontSize="small" />
+      </IconButton>
       <IconButton
         aria-label="Board menu"
         sx={{ color: "#fff" }}

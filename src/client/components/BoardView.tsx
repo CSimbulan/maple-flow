@@ -7,7 +7,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   pointerWithin,
   useSensor,
   useSensors,
@@ -50,7 +51,7 @@ import { BoardHeader } from "./BoardHeader";
 import { CardDialog } from "./CardDialog";
 import { CardFace } from "./CardItem";
 import { InlineAdd } from "./InlineAdd";
-import { LIST_WIDTH, ListColumn, ListOverlay } from "./ListColumn";
+import { ListColumn, ListOverlay, listWidthSx } from "./ListColumn";
 
 type DndKind = "card" | "list" | "drop";
 
@@ -81,7 +82,7 @@ export function BoardView({ boardId }: { boardId: string }) {
     return (
       <Stack direction="row" spacing={1.5} sx={{ p: 2 }}>
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} variant="rounded" width={LIST_WIDTH} height={240} />
+          <Skeleton key={i} variant="rounded" height={240} sx={listWidthSx} />
         ))}
       </Stack>
     );
@@ -129,7 +130,9 @@ function BoardCanvas({ board }: { board: Board }) {
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // On touch screens a drag starts with a short long-press, so a quick swipe still scrolls.
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -235,7 +238,16 @@ function BoardCanvas({ board }: { board: Board }) {
         <Stack
           direction="row"
           spacing={1.5}
-          sx={{ flexGrow: 1, minHeight: 0, overflowX: "auto", p: 1.5, alignItems: "flex-start" }}
+          sx={{
+            flexGrow: 1,
+            minHeight: 0,
+            overflowX: "auto",
+            p: 1.5,
+            alignItems: "flex-start",
+            // Phones snap to one list per swipe; snapping is off while dragging so auto-scroll works.
+            scrollSnapType: { xs: drag ? "none" : "x mandatory", sm: "none" },
+            WebkitOverflowScrolling: "touch",
+          }}
         >
           <SortableContext
             items={columns.listIds.map((id) => `list:${id}`)}
@@ -254,7 +266,7 @@ function BoardCanvas({ board }: { board: Board }) {
               ) : null;
             })}
           </SortableContext>
-          <Box sx={{ width: LIST_WIDTH, flexShrink: 0 }}>
+          <Box sx={listWidthSx}>
             <InlineAdd
               variant="dark"
               label={board.lists.length ? "Add another list" : "Add a list"}
@@ -270,7 +282,8 @@ function BoardCanvas({ board }: { board: Board }) {
         </Stack>
         <DragOverlay>
           {activeCard ? (
-            <Box sx={{ width: LIST_WIDTH - 16 }}>
+            // The overlay is sized to the dragged card, so fill it.
+            <Box sx={{ width: "100%" }}>
               <CardFace card={activeCard} dragging />
             </Box>
           ) : activeList ? (

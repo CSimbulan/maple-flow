@@ -58,7 +58,7 @@ const boardSchema = new Schema<BoardDoc>(
     title: { type: String, required: true, trim: true },
     ownerId: { type: ObjectId, ref: "User", required: true },
     memberIds: { type: [ObjectId], ref: "User", default: [], index: true },
-    background: { type: String, default: "#0079bf" },
+    background: { type: String, default: "#c62828" },
   },
   { timestamps: true },
 );

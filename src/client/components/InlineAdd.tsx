@@ -7,6 +7,7 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import { useState, type FormEvent } from "react";
+import { BRAND } from "@/brand";
 
 /** "+ Add a card" style composer. Stays open after adding so several items can be entered. */
 export function InlineAdd({
@@ -63,7 +64,7 @@ export function InlineAdd({
       onSubmit={submit}
       spacing={1}
       sx={{
-        bgcolor: variant === "dark" ? "#f1f2f4" : undefined,
+        bgcolor: variant === "dark" ? BRAND.warmWhite : undefined,
         p: variant === "dark" ? 1 : 0,
         borderRadius: 2,
       }}

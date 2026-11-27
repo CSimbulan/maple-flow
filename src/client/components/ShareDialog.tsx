@@ -21,10 +21,12 @@ import { useState, type FormEvent } from "react";
 import type { Board } from "../board-moves";
 import { errorMessage, useNotify } from "../notify";
 import { AddBoardMemberMutation, RemoveBoardMemberMutation } from "../operations";
+import { useIsPhone } from "../useIsPhone";
 import { userInitial } from "./CardItem";
 
 export function ShareDialog({ board, onClose }: { board: Board; onClose: () => void }) {
   const notify = useNotify();
+  const isPhone = useIsPhone();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [addMember, { loading: adding }] = useMutation(AddBoardMemberMutation);
@@ -43,7 +45,7 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
   }
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm" fullScreen={isPhone}>
       <DialogTitle>Share board</DialogTitle>
       <DialogContent>
         <Stack component="form" onSubmit={add} direction="row" spacing={1} sx={{ pt: 1 }}>
@@ -78,9 +80,7 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
               <ListItem
                 key={m.id}
                 secondaryAction={
-                  isOwner ? (
-                    <Chip size="small" label="Owner" />
-                  ) : board.viewerIsOwner ? (
+                  !isOwner && board.viewerIsOwner ? (
                     <IconButton
                       edge="end"
                       aria-label={`Remove ${m.email}`}
@@ -98,7 +98,22 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
                 <ListItemAvatar>
                   <Avatar src={m.image ?? undefined}>{userInitial(m)}</Avatar>
                 </ListItemAvatar>
-                <ListItemText primary={m.name ?? m.email} secondary={m.email} />
+                {/* The owner chip sits beside the name so it can't cover a long email address. */}
+                <ListItemText
+                  primary={
+                    <Stack
+                      component="span"
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: "center" }}
+                    >
+                      <span>{m.name ?? m.email}</span>
+                      {isOwner && <Chip size="small" label="Owner" />}
+                    </Stack>
+                  }
+                  secondary={m.email}
+                  slotProps={{ secondary: { noWrap: true } }}
+                />
               </ListItem>
             );
           })}

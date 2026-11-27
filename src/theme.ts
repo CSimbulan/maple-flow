@@ -1,13 +1,14 @@
 "use client";
 
 import { createTheme } from "@mui/material/styles";
+import { BRAND } from "./brand";
 
 export const theme = createTheme({
   cssVariables: true,
   palette: {
-    primary: { main: "#2e7d6b" },
-    secondary: { main: "#c2410c" },
-    background: { default: "#f4f5f7" },
+    primary: { main: BRAND.red, dark: BRAND.redDark, contrastText: "#fff" },
+    secondary: { main: BRAND.orange, dark: BRAND.orangeDark, contrastText: "#fff" },
+    background: { default: "#ffffff", paper: "#ffffff" },
   },
   shape: { borderRadius: 8 },
   typography: {
@@ -16,5 +17,9 @@ export const theme = createTheme({
   },
   components: {
     MuiButton: { defaultProps: { disableElevation: true } },
+    // Initials avatars (no photo) use the brand orange instead of gray.
+    MuiAvatar: {
+      styleOverrides: { colorDefault: { backgroundColor: BRAND.orange, color: "#fff" } },
+    },
   },
 });
