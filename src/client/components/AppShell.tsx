@@ -2,7 +2,12 @@ import type { ReactNode } from "react";
 import { signOut } from "@/server/auth/config";
 import { AppFrame } from "./AppFrame";
 
-type ShellUser = { name?: string | null; email?: string | null; image?: string | null };
+type ShellUser = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+};
 
 async function signOutAction() {
   "use server";
@@ -23,7 +28,12 @@ export function AppShell({
 }) {
   return (
     <AppFrame
-      user={{ name: user.name ?? null, email: user.email ?? null, image: user.image ?? null }}
+      user={{
+        id: user.id,
+        name: user.name ?? null,
+        email: user.email ?? null,
+        image: user.image ?? null,
+      }}
       signOutAction={signOutAction}
       orgId={orgId}
       sidebar={sidebar}
