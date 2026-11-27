@@ -103,6 +103,12 @@ gets one named "Personal" with a "General" project, and boards from before proje
 (`projectId: null`) move into the owner's workspace, keeping guests. Then it redirects to the
 workspace in the `mf-org` cookie (if still a member) or the first one.
 
+Other lazy migrations: boards with no `tags` field get `DEFAULT_TAGS` (`src/lib/tags.ts`) the
+first time their tags are read (`tagsOf` in `graphql/tags.ts`; an empty array means the user
+deleted them all), and lists with no `color` get `defaultListColor(index)` when their board
+loads. Cards carry `tagIds` into their board's embedded `tags`; the old color `labels` were
+replaced by tags and are no longer read.
+
 ### Ordering and drag and drop
 
 - Lists and cards have a fractional-index `position` string (`src/lib/position.ts`). Moves send

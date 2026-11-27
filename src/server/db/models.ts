@@ -1,8 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
 
-export const LABEL_COLORS = ["green", "yellow", "orange", "red", "purple", "blue"] as const;
-export type LabelColor = (typeof LABEL_COLORS)[number];
-
 // Explicit interfaces: Mongoose's InferSchemaType is slow enough to exhaust tsc's memory here.
 type Timestamps = { createdAt: Date; updatedAt: Date };
 
@@ -40,6 +37,18 @@ export interface BoardDoc extends Timestamps {
    */
   memberIds: Types.ObjectId[];
   background: string;
+  /**
+   * Tags cards on this board can carry. Missing (not empty) on boards from before tags existed,
+   * until the board is next loaded and gets the defaults.
+   */
+  tags?: TagDoc[];
+}
+
+export interface TagDoc {
+  _id: Types.ObjectId;
+  name: string;
+  /** Hex color; tags show white text on it. */
+  color: string;
 }
 
 export interface ListDoc extends Timestamps {
@@ -58,7 +67,8 @@ export interface CardDoc extends Timestamps {
   listId: Types.ObjectId;
   title: string;
   description: string;
-  labels: LabelColor[];
+  /** Ids of tags from the card's board. Tags deleted from the board are pulled from here. */
+  tagIds: Types.ObjectId[];
   dueDate: Date | null;
   assigneeIds: Types.ObjectId[];
   position: string;
@@ -93,6 +103,11 @@ const projectSchema = new Schema<ProjectDoc>(
   { timestamps: true },
 );
 
+const tagSchema = new Schema<TagDoc>({
+  name: { type: String, required: true, trim: true },
+  color: { type: String, required: true },
+});
+
 const boardSchema = new Schema<BoardDoc>(
   {
     projectId: { type: ObjectId, ref: "Project", default: null, index: true },
@@ -100,6 +115,8 @@ const boardSchema = new Schema<BoardDoc>(
     ownerId: { type: ObjectId, ref: "User", required: true },
     memberIds: { type: [ObjectId], ref: "User", default: [], index: true },
     background: { type: String, default: "#c62828" },
+    // No default: "missing" means the board still needs its default tags (see tagsOf).
+    tags: { type: [tagSchema], default: undefined },
   },
   { timestamps: true },
 );
@@ -122,7 +139,7 @@ const cardSchema = new Schema<CardDoc>(
     listId: { type: ObjectId, ref: "List", required: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
-    labels: { type: [String], enum: LABEL_COLORS, default: [] },
+    tagIds: { type: [ObjectId], default: [] },
     dueDate: { type: Date, default: null },
     assigneeIds: { type: [ObjectId], ref: "User", default: [] },
     position: { type: String, required: true },

@@ -228,6 +228,118 @@ describe("list colors", () => {
   });
 });
 
+describe("tags", () => {
+  const TAGS = `query ($id: ID!) { board(id: $id) { tags { id name color } } }`;
+  const tagsOf = async (boardId: string, userId = ann) =>
+    (await run(userId, TAGS, { id: boardId })).board.tags as {
+      id: string;
+      name: string;
+      color: string;
+    }[];
+  const SET_TAGS = `mutation ($id: ID!, $t: [ID!]) {
+    updateCard(id: $id, tagIds: $t) { tags { name } }
+  }`;
+  const CREATE = `mutation ($b: ID!, $n: String!, $c: String!) {
+    createTag(boardId: $b, name: $n, color: $c) { tags { name color } }
+  }`;
+  const UPDATE = `mutation ($b: ID!, $t: ID!, $n: String, $c: String) {
+    updateTag(boardId: $b, tagId: $t, name: $n, color: $c) { tags { name color } }
+  }`;
+  const DELETE = `mutation ($b: ID!, $t: ID!) { deleteTag(boardId: $b, tagId: $t) { tags { name } } }`;
+
+  it("gives new boards the default software tags", async () => {
+    const board = await newBoard();
+    expect((await tagsOf(board.id)).map((t) => t.name)).toEqual([
+      "New Feature",
+      "Bug",
+      "UX/UI",
+      "Improvement",
+      "Tech Debt",
+      "Documentation",
+      "Testing",
+      "Performance",
+    ]);
+  });
+
+  it("gives boards from before tags the defaults once, without touching updatedAt", async () => {
+    const board = await newBoard();
+    await BoardModel.updateOne({ _id: board.id }, { $unset: { tags: 1 } }, { timestamps: false });
+    const before = (await BoardModel.findById(board.id).lean())!.updatedAt;
+    const first = await tagsOf(board.id);
+    expect(first).toHaveLength(8);
+    // Same ids the second time: they were stored, not made up per request.
+    expect(await tagsOf(board.id)).toEqual(first);
+    expect((await BoardModel.findById(board.id).lean())!.updatedAt).toEqual(before);
+  });
+
+  it("tags cards with the board's tags, in board order", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["Task"]);
+    const id = await cardId(board.id, "Task");
+    const [feature, bug] = await tagsOf(board.id);
+
+    const set = await run(ann, SET_TAGS, { id, t: [bug.id, feature.id, bug.id] });
+    expect(set.updateCard.tags).toEqual([{ name: "New Feature" }, { name: "Bug" }]);
+    expect((await run(ann, SET_TAGS, { id, t: [] })).updateCard.tags).toEqual([]);
+
+    // A tag from another board, or not a tag at all, is rejected.
+    const other = await tagsOf((await newBoard()).id);
+    expect(await errorCode(run(ann, SET_TAGS, { id, t: [other[0].id] }))).toBe("BAD_USER_INPUT");
+    expect(await errorCode(run(ann, SET_TAGS, { id, t: ["nope"] }))).toBe("BAD_USER_INPUT");
+  });
+
+  it("creates, renames and recolors tags, with unique names", async () => {
+    const board = await newBoard();
+    const created = await run(ann, CREATE, { b: board.id, n: " Security ", c: "#283593" });
+    expect(created.createTag.tags.at(-1)).toEqual({ name: "Security", color: "#283593" });
+
+    expect(await errorCode(run(ann, CREATE, { b: board.id, n: "bug", c: "#283593" }))).toBe(
+      "BAD_USER_INPUT",
+    );
+    expect(await errorCode(run(ann, CREATE, { b: board.id, n: "  ", c: "#283593" }))).toBe(
+      "BAD_USER_INPUT",
+    );
+    expect(await errorCode(run(ann, CREATE, { b: board.id, n: "X", c: "red" }))).toBe(
+      "BAD_USER_INPUT",
+    );
+
+    const bug = (await tagsOf(board.id))[1];
+    const renamed = await run(ann, UPDATE, { b: board.id, t: bug.id, n: "Defect", c: "#4e342e" });
+    expect(renamed.updateTag.tags[1]).toEqual({ name: "Defect", color: "#4e342e" });
+    // Renaming to its own name in other case is fine; to another tag's name is not.
+    await run(ann, UPDATE, { b: board.id, t: bug.id, n: "DEFECT" });
+    expect(await errorCode(run(ann, UPDATE, { b: board.id, t: bug.id, n: "testing" }))).toBe(
+      "BAD_USER_INPUT",
+    );
+  });
+
+  it("deletes a tag from the board and from its cards", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["Task"]);
+    const id = await cardId(board.id, "Task");
+    const [feature, bug] = await tagsOf(board.id);
+    await run(ann, SET_TAGS, { id, t: [feature.id, bug.id] });
+
+    const after = await run(ann, DELETE, { b: board.id, t: bug.id });
+    expect(after.deleteTag.tags.map((t: { name: string }) => t.name)).not.toContain("Bug");
+    const card = await CardModel.findById(id).lean();
+    expect(card!.tagIds.map(String)).toEqual([feature.id]);
+    expect(await errorCode(run(ann, DELETE, { b: board.id, t: bug.id }))).toBe("NOT_FOUND");
+  });
+
+  it("only lets people who can open the board see or change its tags", async () => {
+    const board = await newBoard();
+    const [tag] = await tagsOf(board.id);
+    expect((await run(bob, TAGS, { id: board.id })).board).toBeNull();
+    const ops = [
+      () => run(bob, CREATE, { b: board.id, n: "Mine", c: "#283593" }),
+      () => run(bob, UPDATE, { b: board.id, t: tag.id, n: "Mine" }),
+      () => run(bob, DELETE, { b: board.id, t: tag.id }),
+    ];
+    for (const op of ops) expect(await errorCode(op())).toBe("NOT_FOUND");
+  });
+});
+
 describe("ordering", () => {
   it("moves cards between lists and within a list", async () => {
     const board = await newBoard();
@@ -359,22 +471,20 @@ describe("sharing and cards", () => {
     const board = await newBoard();
     await addCards(ann, board.lists[0].id, ["Task"]);
     const id = await cardId(board.id, "Task");
-    const UPDATE = `mutation ($id: ID!, $due: String, $labels: [String!], $a: [ID!]) {
-      updateCard(id: $id, dueDate: $due, labels: $labels, assigneeIds: $a) { dueDate labels assignees { id } }
+    const UPDATE = `mutation ($id: ID!, $due: String, $a: [ID!]) {
+      updateCard(id: $id, dueDate: $due, assigneeIds: $a) { dueDate assignees { id } }
     }`;
 
-    const set = await run(ann, UPDATE, { id, due: "2026-12-24", labels: ["red", "red", "blue"] });
+    const set = await run(ann, UPDATE, { id, due: "2026-12-24" });
     expect(set.updateCard.dueDate).toBe("2026-12-24T00:00:00.000Z");
-    expect(set.updateCard.labels).toEqual(["red", "blue"]);
 
     // Leaving dueDate out keeps it; passing null clears it.
-    const kept = await run(ann, UPDATE, { id, labels: [] });
+    const kept = await run(ann, UPDATE, { id, a: [] });
     expect(kept.updateCard.dueDate).toBe("2026-12-24T00:00:00.000Z");
     const cleared = await run(ann, UPDATE, { id, due: null });
     expect(cleared.updateCard.dueDate).toBeNull();
 
     expect(await errorCode(run(ann, UPDATE, { id, a: [bob] }))).toBe("BAD_USER_INPUT");
-    expect(await errorCode(run(ann, UPDATE, { id, labels: ["pink"] }))).toBe("BAD_USER_INPUT");
   });
 
   it("archives cards and lists", async () => {

@@ -10,9 +10,8 @@ import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import type { LabelColor } from "@/server/db/models";
 import type { BoardCard } from "../board-moves";
-import { LABEL_HEX } from "../colors";
+import { TagChip } from "./TagChip";
 
 /** Long-pressing to drag on touch screens shouldn't select text or open the callout menu. */
 export const noTouchSelectSx = {
@@ -46,13 +45,10 @@ export function CardFace({ card, dragging }: { card: BoardCard; dragging?: boole
         "&:hover": { boxShadow: (t) => `inset 0 0 0 2px ${t.palette.primary.main}` },
       }}
     >
-      {card.labels.length > 0 && (
-        <Stack direction="row" spacing={0.5} sx={{ mb: 0.75 }}>
-          {card.labels.map((l) => (
-            <Box
-              key={l}
-              sx={{ width: 40, height: 8, borderRadius: 4, bgcolor: LABEL_HEX[l as LabelColor] }}
-            />
+      {card.tags.length > 0 && (
+        <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5, mb: 0.75 }}>
+          {card.tags.map((tag) => (
+            <TagChip key={tag.id} tag={tag} />
           ))}
         </Stack>
       )}

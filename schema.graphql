@@ -15,6 +15,9 @@ type Board {
   members: [User!]!
   owner: User!
   project: Project
+
+  """Tags that cards on this board can carry, in the order they were added."""
+  tags: [Tag!]!
   title: String!
   updatedAt: String!
 
@@ -29,10 +32,12 @@ type Card {
   description: String!
   dueDate: String
   id: ID!
-  labels: [String!]!
   list: List!
   listId: ID!
   position: String!
+
+  """The card's tags, in the board's tag order."""
+  tags: [Tag!]!
   title: String!
 }
 
@@ -86,6 +91,9 @@ type Mutation {
   createList(boardId: ID!, color: String, title: String!): Board!
   createProject(name: String!, workspaceId: ID!): CreateProjectPayload!
 
+  """Add a tag to the board's list of tags. Names are unique per board."""
+  createTag(boardId: ID!, color: String!, name: String!): Board!
+
   """Create a workspace owned by the viewer, with one project to start in."""
   createWorkspace(name: String!): Workspace!
   deleteBoard(id: ID!): ID!
@@ -102,6 +110,9 @@ type Mutation {
   Permanently delete a project with all its boards. Workspace owner only.
   """
   deleteProject(id: ID!): Workspace!
+
+  """Remove a tag from the board and from every card that has it."""
+  deleteTag(boardId: ID!, tagId: ID!): Board!
 
   """
   Permanently delete a workspace with all its projects, boards and cards.
@@ -129,8 +140,9 @@ type Mutation {
   """
   restoreList(id: ID!): RestoreListPayload!
   updateBoard(background: String, id: ID!, title: String): Board!
-  updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, labels: [String!], title: String): Card!
+  updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, tagIds: [ID!], title: String): Card!
   updateListColor(color: String!, id: ID!): List!
+  updateTag(boardId: ID!, color: String, name: String, tagId: ID!): Board!
 }
 
 type Project {
@@ -163,6 +175,13 @@ type RestoreCardPayload {
 type RestoreListPayload {
   board: Board!
   list: List!
+}
+
+type Tag {
+  """Hex color; tags show white text on it."""
+  color: String!
+  id: ID!
+  name: String!
 }
 
 type User {

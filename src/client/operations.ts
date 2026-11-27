@@ -9,12 +9,22 @@ export const UserFields = graphql(`
   }
 `);
 
+export const TagFields = graphql(`
+  fragment TagFields on Tag {
+    id
+    name
+    color
+  }
+`);
+
 export const CardFields = graphql(`
   fragment CardFields on Card {
     id
     title
     description
-    labels
+    tags {
+      ...TagFields
+    }
     dueDate
     position
     listId
@@ -68,6 +78,9 @@ export const BoardDetailQuery = graphql(`
       }
       guests {
         ...UserFields
+      }
+      tags {
+        ...TagFields
       }
       lists {
         ...ListFields
@@ -132,6 +145,49 @@ export const RemoveBoardMemberMutation = graphql(`
       }
       lists {
         ...ListFields
+      }
+    }
+  }
+`);
+
+export const CreateTagMutation = graphql(`
+  mutation CreateTag($boardId: ID!, $name: String!, $color: String!) {
+    createTag(boardId: $boardId, name: $name, color: $color) {
+      id
+      tags {
+        ...TagFields
+      }
+    }
+  }
+`);
+
+export const UpdateTagMutation = graphql(`
+  mutation UpdateTag($boardId: ID!, $tagId: ID!, $name: String, $color: String) {
+    updateTag(boardId: $boardId, tagId: $tagId, name: $name, color: $color) {
+      id
+      tags {
+        ...TagFields
+      }
+    }
+  }
+`);
+
+// Cards that had the tag lose it, so their tags come back too.
+export const DeleteTagMutation = graphql(`
+  mutation DeleteTag($boardId: ID!, $tagId: ID!) {
+    deleteTag(boardId: $boardId, tagId: $tagId) {
+      id
+      tags {
+        ...TagFields
+      }
+      lists {
+        id
+        cards {
+          id
+          tags {
+            ...TagFields
+          }
+        }
       }
     }
   }
@@ -205,7 +261,7 @@ export const UpdateCardMutation = graphql(`
     $id: ID!
     $title: String
     $description: String
-    $labels: [String!]
+    $tagIds: [ID!]
     $dueDate: String
     $assigneeIds: [ID!]
   ) {
@@ -213,7 +269,7 @@ export const UpdateCardMutation = graphql(`
       id: $id
       title: $title
       description: $description
-      labels: $labels
+      tagIds: $tagIds
       dueDate: $dueDate
       assigneeIds: $assigneeIds
     ) {

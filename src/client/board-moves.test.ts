@@ -15,7 +15,7 @@ function card(id: string, listId: string, position: string): BoardCard {
     id,
     title: id,
     description: "",
-    labels: [],
+    tags: [],
     dueDate: null,
     position,
     listId,
@@ -39,6 +39,7 @@ const board: Board = {
   viewerCanManage: true,
   project: null,
   guests: [],
+  tags: [],
   owner: user,
   members: [user],
   lists: [

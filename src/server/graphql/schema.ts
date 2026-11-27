@@ -3,10 +3,10 @@ import type { Model, Types } from "mongoose";
 import { z } from "zod";
 import { defaultListColor } from "../../lib/list-colors";
 import { initialPositions, insertIndex, planInsert } from "../../lib/position";
+import { DEFAULT_TAGS } from "../../lib/tags";
 import {
   BoardModel,
   CardModel,
-  LABEL_COLORS,
   ListModel,
   UserModel,
   type BoardDoc,
@@ -17,6 +17,7 @@ import {
 import { createBuilder } from "./builder";
 import type { Context } from "./context";
 import { badInput, forbidden, notFound, objectId, parse } from "./errors";
+import { sameTagName, tagsOf } from "./tags";
 import { defineWorkspaceSchema } from "./workspaces";
 import {
   boardAudienceIds,
@@ -34,7 +35,9 @@ const title = z.string().trim().min(1, "Title can't be empty").max(200);
 const background = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Background must be a hex color");
 const listColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex color");
 const description = z.string().max(10_000);
-const labels = z.array(z.enum(LABEL_COLORS)).max(LABEL_COLORS.length);
+const tagName = z.string().trim().min(1, "Tag name can't be empty").max(40);
+const tagColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex color");
+const MAX_TAGS = 50;
 const dueDate = z.union([z.iso.date(), z.iso.datetime({ offset: true })]).nullable();
 const email = z.email().transform((e) => e.toLowerCase());
 
@@ -136,6 +139,7 @@ export function buildSchema() {
             ...(input.background ? { background: input.background } : {}),
             ownerId: userId,
             memberIds: [],
+            tags: DEFAULT_TAGS.map((tag) => ({ ...tag })),
           });
           ctx.loaders.boardsByProject.clear(project._id.toString());
           const positions = initialPositions(DEFAULT_LISTS.length);
@@ -211,6 +215,68 @@ export function buildSchema() {
             await CardModel.updateMany({ boardId: board._id }, { $pull: { assigneeIds: userId } });
           }
           return fresh;
+        },
+      }),
+
+      // ---- Tags ----
+      createTag: t.field({
+        type: BoardRef,
+        description: "Add a tag to the board's list of tags. Names are unique per board.",
+        args: {
+          boardId: t.arg.id({ required: true }),
+          name: t.arg.string({ required: true }),
+          color: t.arg.string({ required: true }),
+        },
+        resolve: async (_root, args, ctx) => {
+          const board = await requireBoardAccess(ctx, args.boardId);
+          const input = parse(z.object({ name: tagName, color: tagColor }), args);
+          const tags = await tagsOf(board);
+          if (tags.length >= MAX_TAGS) throw badInput(`A board can have up to ${MAX_TAGS} tags`);
+          if (tags.some((tag) => sameTagName(tag.name, input.name))) {
+            throw badInput(`There's already a tag called “${input.name}”`);
+          }
+          await BoardModel.updateOne({ _id: board._id }, { $push: { tags: input } });
+          return reloadBoard(ctx, board._id);
+        },
+      }),
+      updateTag: t.field({
+        type: BoardRef,
+        args: {
+          boardId: t.arg.id({ required: true }),
+          tagId: t.arg.id({ required: true }),
+          name: t.arg.string(),
+          color: t.arg.string(),
+        },
+        resolve: async (_root, args, ctx) => {
+          const board = await requireBoardAccess(ctx, args.boardId);
+          const input = parse(
+            z.object({ name: tagName.nullish(), color: tagColor.nullish() }),
+            args,
+          );
+          const tags = await tagsOf(board);
+          const tag = tags.find((x) => x._id.toString() === args.tagId);
+          if (!tag) throw notFound("Tag");
+          if (input.name && tags.some((x) => x !== tag && sameTagName(x.name, input.name!))) {
+            throw badInput(`There's already a tag called “${input.name}”`);
+          }
+          const $set: Record<string, unknown> = {};
+          if (input.name) $set["tags.$.name"] = input.name;
+          if (input.color) $set["tags.$.color"] = input.color;
+          await BoardModel.updateOne({ _id: board._id, "tags._id": tag._id }, { $set });
+          return reloadBoard(ctx, board._id);
+        },
+      }),
+      deleteTag: t.field({
+        type: BoardRef,
+        description: "Remove a tag from the board and from every card that has it.",
+        args: { boardId: t.arg.id({ required: true }), tagId: t.arg.id({ required: true }) },
+        resolve: async (_root, args, ctx) => {
+          const board = await requireBoardAccess(ctx, args.boardId);
+          const tag = (await tagsOf(board)).find((x) => x._id.toString() === args.tagId);
+          if (!tag) throw notFound("Tag");
+          await BoardModel.updateOne({ _id: board._id }, { $pull: { tags: { _id: tag._id } } });
+          await CardModel.updateMany({ boardId: board._id }, { $pull: { tagIds: tag._id } });
+          return reloadBoard(ctx, board._id);
         },
       }),
 
@@ -359,7 +425,7 @@ export function buildSchema() {
           id: t.arg.id({ required: true }),
           title: t.arg.string(),
           description: t.arg.string(),
-          labels: t.arg.stringList(),
+          tagIds: t.arg.idList(),
           dueDate: t.arg.string(),
           assigneeIds: t.arg.idList(),
         },
@@ -369,7 +435,7 @@ export function buildSchema() {
             z.object({
               title: title.nullish(),
               description: description.nullish(),
-              labels: labels.nullish(),
+              tagIds: z.array(z.string()).max(MAX_TAGS).nullish(),
               dueDate: dueDate.optional(),
               assigneeIds: z.array(z.string()).nullish(),
             }),
@@ -378,7 +444,15 @@ export function buildSchema() {
           const $set: Record<string, unknown> = {};
           if (input.title) $set.title = input.title;
           if (input.description != null) $set.description = input.description;
-          if (input.labels) $set.labels = [...new Set(input.labels)];
+          if (input.tagIds) {
+            const board = (await ctx.loaders.boardById.load(card.boardId.toString()))!;
+            const onBoard = new Set((await tagsOf(board)).map((tag) => tag._id.toString()));
+            const unique = [...new Set(input.tagIds)];
+            if (unique.some((id) => !onBoard.has(id))) {
+              throw badInput("Tags must belong to the card's board");
+            }
+            $set.tagIds = unique;
+          }
           // An explicit null clears the due date; leaving the argument out keeps it.
           if (input.dueDate !== undefined) {
             $set.dueDate = input.dueDate ? new Date(input.dueDate) : null;

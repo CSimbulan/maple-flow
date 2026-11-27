@@ -5,6 +5,7 @@ import type {
   ListDoc,
   OrganizationDoc,
   ProjectDoc,
+  TagDoc,
   UserDoc,
 } from "../db/models";
 import type { Context } from "./context";
@@ -34,6 +35,7 @@ export function createBuilder() {
     BoardRef: builder.objectRef<BoardDoc>("Board"),
     ListRef: builder.objectRef<ListDoc>("List"),
     CardRef: builder.objectRef<CardDoc>("Card"),
+    TagRef: builder.objectRef<TagDoc>("Tag"),
     MoveCardPayloadRef: builder.objectRef<{
       card: CardDoc;
       fromList: ListDoc;

@@ -27,9 +27,7 @@ import type {
   ArchivedCardsQuery as ArchivedCardsData,
   ArchivedListsQuery as ArchivedListsData,
 } from "@/gql/graphql";
-import type { LabelColor } from "@/server/db/models";
 import type { Board } from "../board-moves";
-import { LABEL_HEX } from "../colors";
 import { useDeleteCard, useDeleteList } from "../deletes";
 import { errorMessage, useNotify } from "../notify";
 import {
@@ -40,6 +38,7 @@ import {
 } from "../operations";
 import { useIsPhone } from "../useIsPhone";
 import { ConfirmDelete } from "./ConfirmDelete";
+import { TagChip } from "./TagChip";
 
 type ArchivedCard = NonNullable<ArchivedCardsData["board"]>["archivedCards"][number];
 type ArchivedList = NonNullable<ArchivedListsData["board"]>["archivedLists"][number];
@@ -127,13 +126,10 @@ function ArchivedCardRow({ card, activeLists }: { card: ArchivedCard; activeList
   return (
     <Row label={`Archived card ${card.title}`}>
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        {card.labels.length > 0 && (
-          <Stack direction="row" spacing={0.5} sx={{ mb: 0.5 }}>
-            {card.labels.map((l) => (
-              <Box
-                key={l}
-                sx={{ width: 32, height: 6, borderRadius: 3, bgcolor: LABEL_HEX[l as LabelColor] }}
-              />
+        {card.tags.length > 0 && (
+          <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5, mb: 0.5 }}>
+            {card.tags.map((tag) => (
+              <TagChip key={tag.id} tag={tag} />
             ))}
           </Stack>
         )}

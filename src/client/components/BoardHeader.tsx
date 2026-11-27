@@ -2,6 +2,7 @@
 
 import { useMutation } from "@apollo/client/react";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import Avatar from "@mui/material/Avatar";
@@ -34,6 +35,7 @@ import { userInitial } from "./CardItem";
 import { ColorSwatches } from "./ColorSwatches";
 import { EditableTitle } from "./EditableTitle";
 import { ShareDialog } from "./ShareDialog";
+import { TagsDialog } from "./TagsDialog";
 
 const breadcrumbLinkSx = {
   color: "inherit",
@@ -47,6 +49,7 @@ export function BoardHeader({ board }: { board: Board }) {
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [updateBoard] = useMutation(UpdateBoardMutation);
   const [deleteBoard, { loading: deleting }] = useMutation(DeleteBoardMutation);
@@ -189,6 +192,17 @@ export function BoardHeader({ board }: { board: Board }) {
           </ListItemIcon>
           Archived items
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            setTagsOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <LocalOfferOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Edit tags
+        </MenuItem>
         <Divider />
         <Box sx={{ px: 2, py: 1, maxWidth: 220 }}>
           <Typography variant="caption" color="text.secondary">
@@ -218,6 +232,7 @@ export function BoardHeader({ board }: { board: Board }) {
 
       {shareOpen && <ShareDialog board={board} onClose={() => setShareOpen(false)} />}
       {archivedOpen && <ArchiveDialog board={board} onClose={() => setArchivedOpen(false)} />}
+      {tagsOpen && <TagsDialog board={board} onClose={() => setTagsOpen(false)} />}
 
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
         <DialogTitle>Delete “{board.title}”?</DialogTitle>

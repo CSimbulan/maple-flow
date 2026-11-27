@@ -3,6 +3,7 @@ import type { SchemaParts } from "./builder";
 import { boardAudienceIds, canManageBoard, isOrgMember, orgOfBoard } from "./permissions";
 import type { Context } from "./context";
 import { defaultListColor } from "../../lib/list-colors";
+import { tagsOf } from "./tags";
 
 /**
  * Lists from before list colors existed get the default color for their place on the board,
@@ -35,6 +36,7 @@ export function defineTypes({
   BoardRef,
   ListRef,
   CardRef,
+  TagRef,
   MoveCardPayloadRef,
   RestoreCardPayloadRef,
   RestoreListPayloadRef,
@@ -134,6 +136,11 @@ export function defineTypes({
           withColors(await ctx.loaders.listsByBoard.load(b._id.toString())),
       }),
       updatedAt: t.string({ resolve: (b) => b.updatedAt.toISOString() }),
+      tags: t.field({
+        type: [TagRef],
+        description: "Tags that cards on this board can carry, in the order they were added.",
+        resolve: (b) => tagsOf(b),
+      }),
       archivedLists: t.field({
         type: [ListRef],
         description: "Archived lists on this board, most recently archived first.",
@@ -177,7 +184,17 @@ export function defineTypes({
       id: t.id({ resolve: (c) => c._id.toString() }),
       title: t.exposeString("title"),
       description: t.exposeString("description"),
-      labels: t.stringList({ resolve: (c) => c.labels }),
+      tags: t.field({
+        type: [TagRef],
+        description: "The card's tags, in the board's tag order.",
+        resolve: async (c, _args, ctx) => {
+          // Cards from before tags existed have no tagIds stored.
+          const ids = new Set((c.tagIds ?? []).map(String));
+          if (ids.size === 0) return [];
+          const board = await ctx.loaders.boardById.load(c.boardId.toString());
+          return board ? (await tagsOf(board)).filter((tag) => ids.has(tag._id.toString())) : [];
+        },
+      }),
       dueDate: t.string({ nullable: true, resolve: (c) => c.dueDate?.toISOString() ?? null }),
       position: t.exposeString("position"),
       listId: t.id({ resolve: (c) => c.listId.toString() }),
@@ -192,6 +209,14 @@ export function defineTypes({
         type: [UserRef],
         resolve: (c, _args, ctx) => loadUsers(ctx, c.assigneeIds),
       }),
+    }),
+  });
+
+  builder.objectType(TagRef, {
+    fields: (t) => ({
+      id: t.id({ resolve: (tag) => tag._id.toString() }),
+      name: t.exposeString("name"),
+      color: t.exposeString("color", { description: "Hex color; tags show white text on it." }),
     }),
   });
 

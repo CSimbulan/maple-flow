@@ -13,8 +13,8 @@ export function ColorSwatches({
   colors: readonly string[];
   value: string;
   onChange: (color: string) => void;
-  /** Color of the check mark on the selected swatch; use a dark one for light swatches. */
-  checkColor?: string;
+  /** Color of the check mark on the selected swatch, fixed or per swatch color. */
+  checkColor?: string | ((color: string) => string);
 }) {
   return (
     <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
@@ -24,7 +24,13 @@ export function ColorSwatches({
           aria-label={`Color ${c}`}
           aria-pressed={c === value}
           onClick={() => onChange(c)}
-          sx={{ width: 36, height: 28, borderRadius: 1, bgcolor: c, color: checkColor }}
+          sx={{
+            width: 36,
+            height: 28,
+            borderRadius: 1,
+            bgcolor: c,
+            color: typeof checkColor === "function" ? checkColor(c) : checkColor,
+          }}
         >
           {c === value && <CheckIcon fontSize="small" />}
         </ButtonBase>

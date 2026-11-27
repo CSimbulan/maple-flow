@@ -7,7 +7,6 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import ButtonBase from "@mui/material/ButtonBase";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -16,32 +15,35 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, type FormEvent } from "react";
-import type { LabelColor } from "@/server/db/models";
 import type { Board, BoardCard } from "../board-moves";
-import { LABEL_HEX, LABELS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { ArchiveCardMutation, UpdateCardMutation } from "../operations";
 import { useDeleteCard } from "../deletes";
 import { useIsPhone } from "../useIsPhone";
 import { userInitial } from "./CardItem";
 import { ConfirmDelete } from "./ConfirmDelete";
+import { TagToggle } from "./TagChip";
 
 type Member = Board["members"][number];
+type Tag = Board["tags"][number];
 
 export function CardDialog({
   card,
   members,
+  tags,
   onClose,
 }: {
   card: BoardCard;
   members: Member[];
+  /** The board's tags, offered to switch on and off. */
+  tags: Tag[];
   onClose: () => void;
 }) {
   const notify = useNotify();
   const isPhone = useIsPhone();
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
-  const [labels, setLabels] = useState<string[]>(card.labels);
+  const [tagIds, setTagIds] = useState<string[]>(card.tags.map((t) => t.id));
   const [dueDate, setDueDate] = useState(card.dueDate?.slice(0, 10) ?? "");
   const [assignees, setAssignees] = useState<Member[]>(
     members.filter((m) => card.assignees.some((a) => a.id === m.id)),
@@ -59,7 +61,8 @@ export function CardDialog({
           id: card.id,
           title: title.trim(),
           description,
-          labels,
+          // Only tags still on the board (one could be deleted while this is open).
+          tagIds: tagIds.filter((id) => tags.some((t) => t.id === id)),
           dueDate: dueDate || null,
           assigneeIds: assignees.map((a) => a.id),
         },
@@ -79,8 +82,8 @@ export function CardDialog({
     }
   }
 
-  const toggleLabel = (l: string) =>
-    setLabels((cur) => (cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l]));
+  const toggleTag = (id: string) =>
+    setTagIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm" fullScreen={isPhone}>
@@ -106,31 +109,24 @@ export function CardDialog({
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <Box>
               <Typography variant="subtitle2" gutterBottom>
-                Labels
+                Tags
               </Typography>
-              <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, p: 0.5 }}>
-                {LABELS.map((l) => {
-                  const on = labels.includes(l);
-                  return (
-                    <ButtonBase
-                      key={l}
-                      aria-label={`${l} label`}
-                      aria-pressed={on}
-                      onClick={() => toggleLabel(l)}
-                      sx={{
-                        width: 44,
-                        height: 28,
-                        borderRadius: 1,
-                        bgcolor: LABEL_HEX[l as LabelColor],
-                        opacity: on ? 1 : 0.35,
-                        outline: on ? "2px solid" : "none",
-                        outlineColor: "text.primary",
-                        outlineOffset: 2,
-                      }}
+              {tags.length > 0 ? (
+                <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, p: 0.5 }}>
+                  {tags.map((tag) => (
+                    <TagToggle
+                      key={tag.id}
+                      tag={tag}
+                      selected={tagIds.includes(tag.id)}
+                      onToggle={() => toggleTag(tag.id)}
                     />
-                  );
-                })}
-              </Stack>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  This board has no tags. Add some with Edit tags in the board menu.
+                </Typography>
+              )}
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField

@@ -332,7 +332,12 @@ function BoardCanvas({ board }: { board: Board }) {
         </DragOverlay>
       </DndContext>
       {openCard && (
-        <CardDialog card={openCard} members={board.members} onClose={() => setOpenCardId(null)} />
+        <CardDialog
+          card={openCard}
+          members={board.members}
+          tags={board.tags}
+          onClose={() => setOpenCardId(null)}
+        />
       )}
     </Box>
   );
