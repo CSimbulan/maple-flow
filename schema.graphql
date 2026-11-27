@@ -56,6 +56,9 @@ type List {
   archived: Boolean!
   boardId: ID!
   cards: [Card!]!
+
+  """Header color, a hex string such as #B3E5FC."""
+  color: String!
   id: ID!
   position: String!
   title: String!
@@ -76,7 +79,11 @@ type Mutation {
   archiveList(id: ID!): Board!
   createBoard(background: String, projectId: ID!, title: String!): Board!
   createCard(listId: ID!, title: String!): List!
-  createList(boardId: ID!, title: String!): Board!
+
+  """
+  Add a list at the end of the board. Without `color` it gets the next default color for its place (the board's first list blue, the second green, and so on).
+  """
+  createList(boardId: ID!, color: String, title: String!): Board!
   createProject(name: String!, workspaceId: ID!): CreateProjectPayload!
 
   """Create a workspace owned by the viewer, with one project to start in."""
@@ -123,6 +130,7 @@ type Mutation {
   restoreList(id: ID!): RestoreListPayload!
   updateBoard(background: String, id: ID!, title: String): Board!
   updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, labels: [String!], title: String): Card!
+  updateListColor(color: String!, id: ID!): List!
 }
 
 type Project {

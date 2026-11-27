@@ -4,19 +4,29 @@ import { useMutation } from "@apollo/client/react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useState } from "react";
 import type { BoardCard, BoardList } from "../board-moves";
 import { useDeleteList } from "../deletes";
 import { errorMessage, useNotify } from "../notify";
-import { ArchiveListMutation, CreateCardMutation, RenameListMutation } from "../operations";
+import {
+  ArchiveListMutation,
+  CreateCardMutation,
+  RenameListMutation,
+  UpdateListColorMutation,
+} from "../operations";
 import { BRAND } from "@/brand";
+import { LIST_COLORS } from "@/lib/list-colors";
 import { noTouchSelectSx, SortableCard } from "./CardItem";
+import { ColorSwatches } from "./ColorSwatches";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { InlineAdd } from "./InlineAdd";
@@ -35,10 +45,13 @@ export const listWidthSx = {
 const columnSx = {
   ...listWidthSx,
   bgcolor: BRAND.warmWhite,
+  boxShadow: 3,
   borderRadius: 3,
   display: "flex",
   flexDirection: "column",
   maxHeight: "100%",
+  // Clips the colored header to the rounded corners; the cards scroll inside.
+  overflow: "hidden",
 } as const;
 
 export function ListColumn({
@@ -63,6 +76,7 @@ export function ListColumn({
   });
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [renameList] = useMutation(RenameListMutation);
+  const [updateListColor] = useMutation(UpdateListColorMutation);
   const [archiveList] = useMutation(ArchiveListMutation);
   const [createCard] = useMutation(CreateCardMutation);
   const [deleteList, deleting] = useDeleteList();
@@ -83,14 +97,31 @@ export function ListColumn({
         opacity: isDragging ? 0.4 : 1,
       }}
     >
-      {/* The header is the drag handle for the whole list. */}
       <Stack
         direction="row"
-        {...attributes}
-        {...listeners}
-        aria-label={`Drag list ${list.title}`}
-        sx={{ ...noTouchSelectSx, alignItems: "center", px: 1, pt: 1, pb: 0.5, cursor: "grab" }}
+        sx={{ alignItems: "center", pl: 0.5, pr: 1, py: 0.75, bgcolor: list.color }}
       >
+        {/* Only this icon drags the list, so the title and menu work like any other control. */}
+        <Box
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag list ${list.title}`}
+          sx={{
+            ...noTouchSelectSx,
+            display: "flex",
+            alignItems: "center",
+            p: 0.5,
+            borderRadius: 1,
+            color: "text.secondary",
+            cursor: isDragging ? "grabbing" : "grab",
+            // The touch sensor's long-press needs the browser not to treat it as a scroll.
+            touchAction: "none",
+            "&:hover": { color: "text.primary", bgcolor: "rgba(0,0,0,0.06)" },
+            "&:focus-visible": { outline: 2, outlineColor: "primary.main" },
+          }}
+        >
+          <DragIndicatorIcon fontSize="small" />
+        </Box>
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <EditableTitle
             value={list.title}
@@ -109,13 +140,11 @@ export function ListColumn({
         <IconButton
           size="small"
           aria-label="List actions"
-          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => setMenuAnchor(e.currentTarget)}
         >
           <MoreHorizIcon fontSize="small" />
         </IconButton>
       </Stack>
-      {/* Outside the header: it is the drag handle, and key presses in these would start a drag. */}
       <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
         <MenuItem
           onClick={() => {
@@ -134,6 +163,29 @@ export function ListColumn({
         >
           Delete this list…
         </MenuItem>
+        <Divider />
+        <Box sx={{ px: 2, py: 1, maxWidth: 220 }}>
+          <Typography variant="caption" color="text.secondary">
+            Header color
+          </Typography>
+          <Box sx={{ mt: 1 }}>
+            <ColorSwatches
+              colors={LIST_COLORS}
+              value={list.color}
+              checkColor="text.primary"
+              onChange={(color) =>
+                run(
+                  updateListColor({
+                    variables: { id: list.id, color },
+                    optimisticResponse: {
+                      updateListColor: { __typename: "List", id: list.id, color },
+                    },
+                  }),
+                )
+              }
+            />
+          </Box>
+        </Box>
       </Menu>
       <ConfirmDelete
         open={confirmDelete}
@@ -157,7 +209,7 @@ export function ListColumn({
         <Stack
           ref={setDropRef}
           spacing={1}
-          sx={{ px: 1, py: 0.5, overflowY: "auto", minHeight: 8, flexGrow: 1 }}
+          sx={{ px: 1, pt: 1, pb: 0.5, overflowY: "auto", minHeight: 8, flexGrow: 1 }}
         >
           {cardIds.map((id) => {
             const card = cardsById.get(id);
@@ -181,9 +233,9 @@ export function ListColumn({
 /** Lightweight copy of a list shown under the pointer while it is dragged. */
 export function ListOverlay({ list }: { list: BoardList }) {
   return (
-    <Box sx={{ ...columnSx, boxShadow: 6, transform: "rotate(2deg)", p: 1.5 }}>
-      <Box sx={{ fontWeight: 700, mb: 1 }}>{list.title}</Box>
-      <Box sx={{ color: "text.secondary", fontSize: 14 }}>
+    <Box sx={{ ...columnSx, boxShadow: 6, transform: "rotate(2deg)" }}>
+      <Box sx={{ fontWeight: 700, px: 1.5, py: 1, bgcolor: list.color }}>{list.title}</Box>
+      <Box sx={{ color: "text.secondary", fontSize: 14, px: 1.5, py: 1 }}>
         {list.cards.length} card{list.cards.length === 1 ? "" : "s"}
       </Box>
     </Box>

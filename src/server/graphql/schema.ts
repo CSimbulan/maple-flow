@@ -1,6 +1,7 @@
 import { lexicographicSortSchema } from "graphql";
 import type { Model, Types } from "mongoose";
 import { z } from "zod";
+import { defaultListColor } from "../../lib/list-colors";
 import { initialPositions, insertIndex, planInsert } from "../../lib/position";
 import {
   BoardModel,
@@ -31,6 +32,7 @@ import { defineTypes } from "./types";
 
 const title = z.string().trim().min(1, "Title can't be empty").max(200);
 const background = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Background must be a hex color");
+const listColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex color");
 const description = z.string().max(10_000);
 const labels = z.array(z.enum(LABEL_COLORS)).max(LABEL_COLORS.length);
 const dueDate = z.union([z.iso.date(), z.iso.datetime({ offset: true })]).nullable();
@@ -142,6 +144,7 @@ export function buildSchema() {
               boardId: board._id,
               title: listTitle,
               position: positions[i],
+              color: defaultListColor(i),
             })),
           );
           return reloadBoard(ctx, board._id);
@@ -214,12 +217,24 @@ export function buildSchema() {
       // ---- Lists ----
       createList: t.field({
         type: BoardRef,
-        args: { boardId: t.arg.id({ required: true }), title: t.arg.string({ required: true }) },
+        description:
+          "Add a list at the end of the board. Without `color` it gets the next default " +
+          "color for its place (the board's first list blue, the second green, and so on).",
+        args: {
+          boardId: t.arg.id({ required: true }),
+          title: t.arg.string({ required: true }),
+          color: t.arg.string(),
+        },
         resolve: async (_root, args, ctx) => {
           const board = await requireBoardAccess(ctx, args.boardId);
-          const input = parse(z.object({ title }), args);
+          const input = parse(z.object({ title, color: listColor.nullish() }), args);
           const position = await positionIn(ListModel, { boardId: board._id }, null);
-          await ListModel.create({ boardId: board._id, title: input.title, position });
+          const color =
+            input.color ??
+            defaultListColor(
+              await ListModel.countDocuments({ boardId: board._id, archived: false }),
+            );
+          await ListModel.create({ boardId: board._id, title: input.title, position, color });
           return reloadBoard(ctx, board._id);
         },
       }),
@@ -232,6 +247,19 @@ export function buildSchema() {
           return (await ListModel.findByIdAndUpdate(
             list._id,
             { $set: { title: input.title } },
+            { returnDocument: "after" },
+          ).lean<ListDoc>())!;
+        },
+      }),
+      updateListColor: t.field({
+        type: ListRef,
+        args: { id: t.arg.id({ required: true }), color: t.arg.string({ required: true }) },
+        resolve: async (_root, args, ctx) => {
+          const list = await requireList(ctx, args.id);
+          const input = parse(z.object({ color: listColor }), args);
+          return (await ListModel.findByIdAndUpdate(
+            list._id,
+            { $set: { color: input.color } },
             { returnDocument: "after" },
           ).lean<ListDoc>())!;
         },
@@ -294,9 +322,14 @@ export function buildSchema() {
         resolve: async (_root, { id }, ctx) => {
           const list = await requireList(ctx, id, { archived: true });
           const position = await positionIn(ListModel, { boardId: list.boardId }, null);
+          const color =
+            list.color ??
+            defaultListColor(
+              await ListModel.countDocuments({ boardId: list.boardId, archived: false }),
+            );
           const restored = (await ListModel.findByIdAndUpdate(
             list._id,
-            { $set: { archived: false, position } },
+            { $set: { archived: false, position, color } },
             { returnDocument: "after" },
           ).lean<ListDoc>())!;
           return { list: restored, board: await reloadBoard(ctx, list.boardId) };

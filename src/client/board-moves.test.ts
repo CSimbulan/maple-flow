@@ -47,6 +47,7 @@ const board: Board = {
       id: "L1",
       title: "To do",
       position: "a0",
+      color: "#B3E5FC",
       cards: [card("c1", "L1", "a0"), card("c2", "L1", "a1"), card("c3", "L1", "a2")],
     },
     {
@@ -54,9 +55,10 @@ const board: Board = {
       id: "L2",
       title: "Doing",
       position: "a1",
+      color: "#C8E6C9",
       cards: [card("c4", "L2", "a0")],
     },
-    { __typename: "List", id: "L3", title: "Done", position: "a2", cards: [] },
+    { __typename: "List", id: "L3", title: "Done", position: "a2", color: "#FFECB3", cards: [] },
   ],
 };
 

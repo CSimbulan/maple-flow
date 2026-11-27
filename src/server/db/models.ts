@@ -47,6 +47,8 @@ export interface ListDoc extends Timestamps {
   boardId: Types.ObjectId;
   title: string;
   position: string;
+  /** Header color (hex). Null on lists from before colors existed, until their board is opened. */
+  color: string | null;
   archived: boolean;
 }
 
@@ -107,6 +109,7 @@ const listSchema = new Schema<ListDoc>(
     boardId: { type: ObjectId, ref: "Board", required: true },
     title: { type: String, required: true, trim: true },
     position: { type: String, required: true },
+    color: { type: String, default: null },
     archived: { type: Boolean, default: false },
   },
   { timestamps: true },
@@ -130,8 +133,11 @@ const cardSchema = new Schema<CardDoc>(
 cardSchema.index({ listId: 1, position: 1 });
 
 function model<T>(name: string, schema: Schema<T>): Model<T> {
-  // Reuse compiled models across Next.js dev reloads.
-  return (mongoose.models[name] as Model<T> | undefined) ?? mongoose.model<T>(name, schema);
+  // Next.js dev reloads re-run this file, so a model can already exist. Replace it rather than
+  // reuse it: a reused model keeps its old schema, and Mongoose silently drops fields it doesn't
+  // know when saving (new list colors were never stored until the server restarted).
+  if (mongoose.models[name]) mongoose.deleteModel(name);
+  return mongoose.model<T>(name, schema);
 }
 
 export const UserModel = model("User", userSchema);

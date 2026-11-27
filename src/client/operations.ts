@@ -29,6 +29,7 @@ export const ListFields = graphql(`
     id
     title
     position
+    color
     cards {
       ...CardFields
     }
@@ -137,8 +138,8 @@ export const RemoveBoardMemberMutation = graphql(`
 `);
 
 export const CreateListMutation = graphql(`
-  mutation CreateList($boardId: ID!, $title: String!) {
-    createList(boardId: $boardId, title: $title) {
+  mutation CreateList($boardId: ID!, $title: String!, $color: String) {
+    createList(boardId: $boardId, title: $title, color: $color) {
       id
       lists {
         ...ListFields
@@ -152,6 +153,15 @@ export const RenameListMutation = graphql(`
     renameList(id: $id, title: $title) {
       id
       title
+    }
+  }
+`);
+
+export const UpdateListColorMutation = graphql(`
+  mutation UpdateListColor($id: ID!, $color: String!) {
+    updateListColor(id: $id, color: $color) {
+      id
+      color
     }
   }
 `);

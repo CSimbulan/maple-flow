@@ -33,7 +33,7 @@ const SIDEBAR_WIDTH = 248;
 /**
  * Top bar (menu button, app name, organization switcher, account menu) and the projects sidebar.
  * `sidebar="docked"` keeps the sidebar open beside the page from the `md` breakpoint up; "drawer"
- * always slides it in from the menu button (board pages, which need the width).
+ * always slides it in from the menu button (for pages that need the full width).
  */
 export function AppFrame({
   user,

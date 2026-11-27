@@ -48,8 +48,10 @@ import {
   MoveCardMutation,
   MoveListMutation,
 } from "../operations";
+import { defaultListColor, LIST_COLORS } from "@/lib/list-colors";
 import { BoardHeader } from "./BoardHeader";
 import { CardDialog } from "./CardDialog";
+import { ColorSwatches } from "./ColorSwatches";
 import { CardFace } from "./CardItem";
 import { InlineAdd } from "./InlineAdd";
 import { ListColumn, ListOverlay, listWidthSx } from "./ListColumn";
@@ -120,6 +122,9 @@ function BoardCanvas({ board }: { board: Board }) {
   const [moveList] = useMutation(MoveListMutation);
   const [createList] = useMutation(CreateListMutation);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
+  // Color for the next new list: the default for its place unless one was picked.
+  const [pickedListColor, setPickedListColor] = useState<string | null>(null);
+  const newListColor = pickedListColor ?? defaultListColor(board.lists.length);
   // While dragging, the order lives in local state; otherwise it comes straight from the cache.
   const [drag, setDrag] = useState<{ kind: "card" | "list"; id: string; columns: Columns } | null>(
     null,
@@ -300,11 +305,19 @@ function BoardCanvas({ board }: { board: Board }) {
               placeholder="Enter list title"
               submitLabel="Add list"
               onAdd={(title) =>
-                createList({ variables: { boardId: board.id, title } }).catch((err) =>
-                  notify(errorMessage(err)),
-                )
+                createList({ variables: { boardId: board.id, title, color: newListColor } })
+                  // The composer stays open; the next list starts on the next default color.
+                  .then(() => setPickedListColor(null))
+                  .catch((err) => notify(errorMessage(err)))
               }
-            />
+            >
+              <ColorSwatches
+                colors={LIST_COLORS}
+                value={newListColor}
+                onChange={setPickedListColor}
+                checkColor="text.primary"
+              />
+            </InlineAdd>
           </Box>
         </Stack>
         <DragOverlay>

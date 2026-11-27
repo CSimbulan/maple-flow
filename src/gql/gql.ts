@@ -16,7 +16,7 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
 type Documents = {
     "\n  fragment UserFields on User {\n    id\n    name\n    email\n    image\n  }\n": typeof types.UserFieldsFragmentDoc,
     "\n  fragment CardFields on Card {\n    id\n    title\n    description\n    labels\n    dueDate\n    position\n    listId\n    assignees {\n      ...UserFields\n    }\n  }\n": typeof types.CardFieldsFragmentDoc,
-    "\n  fragment ListFields on List {\n    id\n    title\n    position\n    cards {\n      ...CardFields\n    }\n  }\n": typeof types.ListFieldsFragmentDoc,
+    "\n  fragment ListFields on List {\n    id\n    title\n    position\n    color\n    cards {\n      ...CardFields\n    }\n  }\n": typeof types.ListFieldsFragmentDoc,
     "\n  fragment BoardTileFields on Board {\n    id\n    title\n    background\n    updatedAt\n  }\n": typeof types.BoardTileFieldsFragmentDoc,
     "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerCanManage\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.BoardDetailDocument,
     "\n  mutation CreateBoard($projectId: ID!, $title: String!, $background: String) {\n    createBoard(projectId: $projectId, title: $title, background: $background) {\n      ...BoardTileFields\n      project {\n        id\n        boards {\n          ...BoardTileFields\n        }\n      }\n    }\n  }\n": typeof types.CreateBoardDocument,
@@ -24,8 +24,9 @@ type Documents = {
     "\n  mutation DeleteBoard($id: ID!) {\n    deleteBoard(id: $id)\n  }\n": typeof types.DeleteBoardDocument,
     "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n    }\n  }\n": typeof types.AddBoardMemberDocument,
     "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.RemoveBoardMemberDocument,
-    "\n  mutation CreateList($boardId: ID!, $title: String!) {\n    createList(boardId: $boardId, title: $title) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.CreateListDocument,
+    "\n  mutation CreateList($boardId: ID!, $title: String!, $color: String) {\n    createList(boardId: $boardId, title: $title, color: $color) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": typeof types.CreateListDocument,
     "\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n": typeof types.RenameListDocument,
+    "\n  mutation UpdateListColor($id: ID!, $color: String!) {\n    updateListColor(id: $id, color: $color) {\n      id\n      color\n    }\n  }\n": typeof types.UpdateListColorDocument,
     "\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n": typeof types.MoveListDocument,
     "\n  mutation ArchiveList($id: ID!) {\n    archiveList(id: $id) {\n      id\n      lists {\n        id\n      }\n    }\n  }\n": typeof types.ArchiveListDocument,
     "\n  mutation CreateCard($listId: ID!, $title: String!) {\n    createCard(listId: $listId, title: $title) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n": typeof types.CreateCardDocument,
@@ -56,7 +57,7 @@ type Documents = {
 const documents: Documents = {
     "\n  fragment UserFields on User {\n    id\n    name\n    email\n    image\n  }\n": types.UserFieldsFragmentDoc,
     "\n  fragment CardFields on Card {\n    id\n    title\n    description\n    labels\n    dueDate\n    position\n    listId\n    assignees {\n      ...UserFields\n    }\n  }\n": types.CardFieldsFragmentDoc,
-    "\n  fragment ListFields on List {\n    id\n    title\n    position\n    cards {\n      ...CardFields\n    }\n  }\n": types.ListFieldsFragmentDoc,
+    "\n  fragment ListFields on List {\n    id\n    title\n    position\n    color\n    cards {\n      ...CardFields\n    }\n  }\n": types.ListFieldsFragmentDoc,
     "\n  fragment BoardTileFields on Board {\n    id\n    title\n    background\n    updatedAt\n  }\n": types.BoardTileFieldsFragmentDoc,
     "\n  query BoardDetail($id: ID!) {\n    board(id: $id) {\n      id\n      title\n      background\n      viewerCanManage\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n      owner {\n        ...UserFields\n      }\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.BoardDetailDocument,
     "\n  mutation CreateBoard($projectId: ID!, $title: String!, $background: String) {\n    createBoard(projectId: $projectId, title: $title, background: $background) {\n      ...BoardTileFields\n      project {\n        id\n        boards {\n          ...BoardTileFields\n        }\n      }\n    }\n  }\n": types.CreateBoardDocument,
@@ -64,8 +65,9 @@ const documents: Documents = {
     "\n  mutation DeleteBoard($id: ID!) {\n    deleteBoard(id: $id)\n  }\n": types.DeleteBoardDocument,
     "\n  mutation AddBoardMember($boardId: ID!, $email: String!) {\n    addBoardMember(boardId: $boardId, email: $email) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n    }\n  }\n": types.AddBoardMemberDocument,
     "\n  mutation RemoveBoardMember($boardId: ID!, $userId: ID!) {\n    removeBoardMember(boardId: $boardId, userId: $userId) {\n      id\n      members {\n        ...UserFields\n      }\n      guests {\n        ...UserFields\n      }\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.RemoveBoardMemberDocument,
-    "\n  mutation CreateList($boardId: ID!, $title: String!) {\n    createList(boardId: $boardId, title: $title) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.CreateListDocument,
+    "\n  mutation CreateList($boardId: ID!, $title: String!, $color: String) {\n    createList(boardId: $boardId, title: $title, color: $color) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n": types.CreateListDocument,
     "\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n": types.RenameListDocument,
+    "\n  mutation UpdateListColor($id: ID!, $color: String!) {\n    updateListColor(id: $id, color: $color) {\n      id\n      color\n    }\n  }\n": types.UpdateListColorDocument,
     "\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n": types.MoveListDocument,
     "\n  mutation ArchiveList($id: ID!) {\n    archiveList(id: $id) {\n      id\n      lists {\n        id\n      }\n    }\n  }\n": types.ArchiveListDocument,
     "\n  mutation CreateCard($listId: ID!, $title: String!) {\n    createCard(listId: $listId, title: $title) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n": types.CreateCardDocument,
@@ -119,7 +121,7 @@ export function graphql(source: "\n  fragment CardFields on Card {\n    id\n    
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment ListFields on List {\n    id\n    title\n    position\n    cards {\n      ...CardFields\n    }\n  }\n"): (typeof documents)["\n  fragment ListFields on List {\n    id\n    title\n    position\n    cards {\n      ...CardFields\n    }\n  }\n"];
+export function graphql(source: "\n  fragment ListFields on List {\n    id\n    title\n    position\n    color\n    cards {\n      ...CardFields\n    }\n  }\n"): (typeof documents)["\n  fragment ListFields on List {\n    id\n    title\n    position\n    color\n    cards {\n      ...CardFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -151,11 +153,15 @@ export function graphql(source: "\n  mutation RemoveBoardMember($boardId: ID!, $
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation CreateList($boardId: ID!, $title: String!) {\n    createList(boardId: $boardId, title: $title) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateList($boardId: ID!, $title: String!) {\n    createList(boardId: $boardId, title: $title) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  mutation CreateList($boardId: ID!, $title: String!, $color: String) {\n    createList(boardId: $boardId, title: $title, color: $color) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateList($boardId: ID!, $title: String!, $color: String) {\n    createList(boardId: $boardId, title: $title, color: $color) {\n      id\n      lists {\n        ...ListFields\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n"): (typeof documents)["\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateListColor($id: ID!, $color: String!) {\n    updateListColor(id: $id, color: $color) {\n      id\n      color\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateListColor($id: ID!, $color: String!) {\n    updateListColor(id: $id, color: $color) {\n      id\n      color\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

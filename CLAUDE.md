@@ -114,8 +114,9 @@ workspace in the `mf-org` cookie (if still a member) or the first one.
   long-press so swipes scroll). Drag order is local state; after a drop it's held in `pending`
   until the mutation settles. Falling back to the cache immediately made the drop animation fly
   back to the card's old spot.
-- The list header is the drag handle; menus/dialogs are rendered outside it because key events
-  from portals bubble to it and start a keyboard drag.
+- Lists drag only by the grip icon in their header (it carries dnd-kit's `listeners`). Don't put
+  the listeners on an element that contains menus or dialogs: key events from portals bubble up
+  the React tree to it and start a keyboard drag.
 
 ### Client data and rendering
 

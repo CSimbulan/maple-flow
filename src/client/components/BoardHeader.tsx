@@ -34,6 +34,12 @@ import { ColorSwatches } from "./ColorSwatches";
 import { EditableTitle } from "./EditableTitle";
 import { ShareDialog } from "./ShareDialog";
 
+const breadcrumbLinkSx = {
+  color: "inherit",
+  textDecoration: "none",
+  "&:hover": { textDecoration: "underline" },
+} as const;
+
 export function BoardHeader({ board }: { board: Board }) {
   const notify = useNotify();
   const router = useRouter();
@@ -90,20 +96,23 @@ export function BoardHeader({ board }: { board: Board }) {
       {/* Takes the free space and truncates long titles instead of wrapping. */}
       <Box sx={{ minWidth: 0, flexGrow: 1 }}>
         {board.project && projectHref && (
+          // Workspace > Project; each part links to its page.
           <Typography
-            component={Link}
-            href={projectHref}
+            component="nav"
+            aria-label="Board location"
             variant="caption"
             noWrap
-            sx={{
-              display: "block",
-              px: 0.75,
-              color: "rgba(255,255,255,0.85)",
-              textDecoration: "none",
-              "&:hover": { textDecoration: "underline" },
-            }}
+            sx={{ display: "block", px: 0.75, color: "rgba(255,255,255,0.85)" }}
           >
-            {board.project.workspace.name} / {board.project.name}
+            <Box component={Link} href={`/w/${board.project.workspace.id}`} sx={breadcrumbLinkSx}>
+              {board.project.workspace.name}
+            </Box>
+            <Box component="span" aria-hidden sx={{ mx: 0.75 }}>
+              &gt;
+            </Box>
+            <Box component={Link} href={projectHref} sx={breadcrumbLinkSx}>
+              {board.project.name}
+            </Box>
           </Typography>
         )}
         <Box sx={{ maxWidth: 480 }}>

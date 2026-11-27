@@ -167,6 +167,67 @@ describe("boards", () => {
   });
 });
 
+describe("list colors", () => {
+  const COLORS = `query ($id: ID!) { board(id: $id) { lists { title color } } }`;
+  const colorsOf = async (boardId: string) =>
+    (await run(ann, COLORS, { id: boardId })).board.lists.map(
+      (l: { title: string; color: string }) => [l.title, l.color],
+    );
+  const addList = (boardId: string, title: string, color?: string) =>
+    run(
+      ann,
+      `mutation ($b: ID!, $t: String!, $c: String) {
+        createList(boardId: $b, title: $t, color: $c) { id }
+      }`,
+      { b: boardId, t: title, c: color },
+    );
+
+  it("gives new lists the next default color, cycling after five", async () => {
+    const board = await newBoard();
+    await addList(board.id, "Review");
+    await addList(board.id, "Shipped");
+    await addList(board.id, "Later");
+    expect(await colorsOf(board.id)).toEqual([
+      ["To do", "#B3E5FC"],
+      ["Doing", "#C8E6C9"],
+      ["Done", "#FFECB3"],
+      ["Review", "#F8BBD0"],
+      ["Shipped", "#D1C4E9"],
+      ["Later", "#B3E5FC"],
+    ]);
+  });
+
+  it("uses a picked color and lets members change it", async () => {
+    const board = await newBoard();
+    await addList(board.id, "Review", "#C8E6C9");
+    expect((await colorsOf(board.id))[3]).toEqual(["Review", "#C8E6C9"]);
+
+    const SET = `mutation ($id: ID!, $c: String!) { updateListColor(id: $id, color: $c) { color } }`;
+    const todo = board.lists[0].id;
+    expect((await run(ann, SET, { id: todo, c: "#D1C4E9" })).updateListColor.color).toBe("#D1C4E9");
+    expect(await errorCode(run(ann, SET, { id: todo, c: "blue" }))).toBe("BAD_USER_INPUT");
+    expect(await errorCode(addList(board.id, "Bad", "#12345"))).toBe("BAD_USER_INPUT");
+    expect(await errorCode(run(bob, SET, { id: todo, c: "#B3E5FC" }))).toBe("NOT_FOUND");
+  });
+
+  it("colors lists from before colors existed by their place, and keeps it", async () => {
+    const board = await newBoard();
+    await ListModel.updateMany({ boardId: board.id }, { $unset: { color: 1 } });
+    // Move "Done" first: it takes the first default color and keeps it from then on.
+    await run(ann, `mutation ($id: ID!, $a: ID) { moveList(id: $id, afterId: $a) { id } }`, {
+      id: board.lists[2].id,
+      a: board.lists[0].id,
+    });
+    expect(await colorsOf(board.id)).toEqual([
+      ["Done", "#B3E5FC"],
+      ["To do", "#C8E6C9"],
+      ["Doing", "#FFECB3"],
+    ]);
+    const stored = await ListModel.findById(board.lists[2].id).lean();
+    expect(stored?.color).toBe("#B3E5FC");
+  });
+});
+
 describe("ordering", () => {
   it("moves cards between lists and within a list", async () => {
     const board = await newBoard();

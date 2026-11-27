@@ -2,6 +2,22 @@ import { CardModel, ListModel, type CardDoc, type ListDoc, type UserDoc } from "
 import type { SchemaParts } from "./builder";
 import { boardAudienceIds, canManageBoard, isOrgMember, orgOfBoard } from "./permissions";
 import type { Context } from "./context";
+import { defaultListColor } from "../../lib/list-colors";
+
+/**
+ * Lists from before list colors existed get the default color for their place on the board,
+ * saved so it stays put when they're reordered (a lazy migration, like ensureWorkspace).
+ */
+async function withColors(lists: ListDoc[]): Promise<ListDoc[]> {
+  const missing = lists.flatMap((l, i) => (l.color ? [] : [{ l, color: defaultListColor(i) }]));
+  if (missing.length === 0) return lists;
+  await ListModel.bulkWrite(
+    missing.map(({ l, color }) => ({
+      updateOne: { filter: { _id: l._id, color: null }, update: { $set: { color } } },
+    })),
+  );
+  return lists.map((l, i) => (l.color ? l : { ...l, color: defaultListColor(i) }));
+}
 
 /** Users by id (ObjectIds or strings), skipping any that no longer exist. */
 async function loadUsers(ctx: Context, ids: { toString(): string }[]): Promise<UserDoc[]> {
@@ -114,7 +130,8 @@ export function defineTypes({
       }),
       lists: t.field({
         type: [ListRef],
-        resolve: (b, _args, ctx) => ctx.loaders.listsByBoard.load(b._id.toString()),
+        resolve: async (b, _args, ctx) =>
+          withColors(await ctx.loaders.listsByBoard.load(b._id.toString())),
       }),
       updatedAt: t.string({ resolve: (b) => b.updatedAt.toISOString() }),
       archivedLists: t.field({
@@ -141,6 +158,11 @@ export function defineTypes({
       id: t.id({ resolve: (l) => l._id.toString() }),
       title: t.exposeString("title"),
       position: t.exposeString("position"),
+      color: t.string({
+        description: "Header color, a hex string such as #B3E5FC.",
+        // Only an archived list from before colors existed has none; the board's lists backfill.
+        resolve: (l) => l.color ?? defaultListColor(0),
+      }),
       boardId: t.id({ resolve: (l) => l.boardId.toString() }),
       archived: t.exposeBoolean("archived"),
       cards: t.field({
