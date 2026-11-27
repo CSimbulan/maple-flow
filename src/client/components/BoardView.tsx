@@ -29,7 +29,7 @@ import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   columnsOf,
   listOfCard,
@@ -121,7 +121,23 @@ function BoardCanvas({ board }: { board: Board }) {
   const [drag, setDrag] = useState<{ kind: "card" | "list"; id: string; columns: Columns } | null>(
     null,
   );
-  const columns = drag?.columns ?? columnsOf(board);
+  // After a drop, keep showing the dropped order until the move mutation settles. Falling back to
+  // the cache right away renders one frame with the card back in its old place (the optimistic
+  // update hasn't landed yet), and dnd-kit's drop animation then flies the card back there.
+  const [pending, setPending] = useState<Columns | null>(null);
+  const pendingMove = useRef(0);
+  const columns = drag?.columns ?? pending ?? columnsOf(board);
+
+  /** Show `dropped` until `move` settles; a newer drop takes over from an older one. */
+  function holdUntilSettled(dropped: Columns, move: Promise<unknown>) {
+    const token = ++pendingMove.current;
+    setPending(dropped);
+    move
+      .catch((err) => notify(errorMessage(err)))
+      .finally(() => {
+        if (pendingMove.current === token) setPending(null);
+      });
+  }
 
   const listsById = useMemo(() => new Map(board.lists.map((l) => [l.id, l])), [board.lists]);
   const cardsById = useMemo(
@@ -138,7 +154,8 @@ function BoardCanvas({ board }: { board: Board }) {
 
   function onDragStart({ active }: DragStartEvent) {
     const { kind, id } = parseId(active.id);
-    if (kind === "card" || kind === "list") setDrag({ kind, id, columns: columnsOf(board) });
+    // Start from what's on screen, which may still be a previous drop that hasn't settled.
+    if (kind === "card" || kind === "list") setDrag({ kind, id, columns });
   }
 
   // Moving a card into another list happens during the drag, so the target list makes room.
@@ -180,11 +197,15 @@ function BoardCanvas({ board }: { board: Board }) {
       const from = order.indexOf(current.id);
       const to = target.kind === "list" ? order.indexOf(target.id) : -1;
       if (to === -1 || from === to) return;
-      const { beforeId, afterId } = neighbors(arrayMove(order, from, to), current.id);
-      moveList({
-        variables: { id: current.id, beforeId, afterId },
-        optimisticResponse: optimisticMoveList(board, current.id, beforeId, afterId),
-      }).catch((err) => notify(errorMessage(err)));
+      const listIds = arrayMove(order, from, to);
+      const { beforeId, afterId } = neighbors(listIds, current.id);
+      holdUntilSettled(
+        { ...current.columns, listIds },
+        moveList({
+          variables: { id: current.id, beforeId, afterId },
+          optimisticResponse: optimisticMoveList(board, current.id, beforeId, afterId),
+        }),
+      );
       return;
     }
 
@@ -206,10 +227,13 @@ function BoardCanvas({ board }: { board: Board }) {
         ),
       ) === JSON.stringify({ beforeId, afterId });
     if (unchanged) return;
-    moveCard({
-      variables: { id: cardId, toListId: listId, beforeId, afterId },
-      optimisticResponse: optimisticMoveCard(board, cardId, listId, beforeId, afterId),
-    }).catch((err) => notify(errorMessage(err)));
+    holdUntilSettled(
+      { ...current.columns, cards: { ...current.columns.cards, [listId]: ids } },
+      moveCard({
+        variables: { id: cardId, toListId: listId, beforeId, afterId },
+        optimisticResponse: optimisticMoveCard(board, cardId, listId, beforeId, afterId),
+      }),
+    );
   }
 
   const activeCard = drag?.kind === "card" ? cardsById.get(drag.id) : undefined;
