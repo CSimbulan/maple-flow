@@ -28,6 +28,7 @@ import type { Board } from "../board-moves";
 import { BOARD_BACKGROUNDS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { DeleteBoardMutation, UpdateBoardMutation } from "../operations";
+import { BAR_AVATAR_SX } from "./AppFrame";
 import { ArchiveDialog } from "./ArchiveDialog";
 import { userInitial } from "./CardItem";
 import { ColorSwatches } from "./ColorSwatches";
@@ -131,7 +132,9 @@ export function BoardHeader({ board }: { board: Board }) {
         max={5}
         sx={{
           display: { xs: "none", sm: "flex" },
-          "& .MuiAvatar-root": { width: 28, height: 28, fontSize: 13 },
+          // Same look as the account avatar in the top bar. The ring matches the board color so
+          // overlapping white avatars stay apart.
+          "& .MuiAvatar-root": { ...BAR_AVATAR_SX, borderColor: board.background },
         }}
       >
         {board.members.map((m) => (

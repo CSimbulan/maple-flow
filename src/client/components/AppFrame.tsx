@@ -30,6 +30,16 @@ export type FrameUser = {
 
 const SIDEBAR_WIDTH = 248;
 
+/** People's avatars on the colored bars: white circle, bold red initial (no photo). */
+export const BAR_AVATAR_SX = {
+  width: 30,
+  height: 30,
+  fontSize: 14,
+  bgcolor: "#fff",
+  color: BRAND.red,
+  fontWeight: 700,
+} as const;
+
 /**
  * Top bar (menu button, app name, organization switcher, account menu) and the projects sidebar.
  * `sidebar="docked"` keeps the sidebar open beside the page from the `md` breakpoint up; "drawer"
@@ -104,17 +114,7 @@ export function AppFrame({
                 onClick={(e) => setAccountAnchor(e.currentTarget)}
                 sx={{ p: 0.5 }}
               >
-                <Avatar
-                  src={user.image ?? undefined}
-                  sx={{
-                    width: 30,
-                    height: 30,
-                    fontSize: 14,
-                    bgcolor: "#fff",
-                    color: BRAND.red,
-                    fontWeight: 700,
-                  }}
-                >
+                <Avatar src={user.image ?? undefined} sx={BAR_AVATAR_SX}>
                   {initial}
                 </Avatar>
               </IconButton>
