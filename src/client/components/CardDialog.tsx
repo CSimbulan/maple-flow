@@ -154,6 +154,8 @@ export function CardDialog({
             <Stack direction="row" spacing={2}>
               <TextField
                 select
+                // MUI links a select to its label only through an id; without one it has no name.
+                id="card-priority"
                 label="Priority"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority | "")}
