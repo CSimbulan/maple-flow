@@ -1,6 +1,9 @@
 type Board {
   """Archived cards on this board, most recently archived first."""
   archivedCards: [Card!]!
+
+  """Archived lists on this board, most recently archived first."""
+  archivedLists: [List!]!
   background: String!
   id: ID!
   lists: [List!]!
@@ -57,6 +60,11 @@ type Mutation {
   Un-archive a card, at the bottom of its original list or of `listId` if given. If the original list is archived too, `listId` is required.
   """
   restoreCard(id: ID!, listId: ID): RestoreCardPayload!
+
+  """
+  Un-archive a list, with the cards it had, at the end of the board's lists. Cards archived on their own stay archived.
+  """
+  restoreList(id: ID!): RestoreListPayload!
   updateBoard(background: String, id: ID!, title: String): Board!
   updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, labels: [String!], title: String): Card!
 }
@@ -70,6 +78,11 @@ type Query {
 type RestoreCardPayload {
   board: Board!
   card: Card!
+  list: List!
+}
+
+type RestoreListPayload {
+  board: Board!
   list: List!
 }
 

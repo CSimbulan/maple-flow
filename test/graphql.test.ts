@@ -418,3 +418,73 @@ describe("archived cards", () => {
     );
   });
 });
+
+describe("archived lists", () => {
+  const ARCHIVE_LIST = `mutation ($id: ID!) { archiveList(id: $id) { id } }`;
+  const ARCHIVED_LISTS = `query ($id: ID!) {
+    board(id: $id) { archivedLists { title archived cards { title } } }
+  }`;
+  const RESTORE_LIST = `mutation ($id: ID!) {
+    restoreList(id: $id) {
+      list { title archived }
+      board { lists { title } archivedLists { id } }
+    }
+  }`;
+
+  it("lists archived lists, newest first, with the cards they hold", async () => {
+    const board = await newBoard();
+    const [todo, , done] = board.lists;
+    await addCards(ann, todo.id, ["A", "B"]);
+    await run(ann, ARCHIVE_LIST, { id: done.id });
+    await new Promise((r) => setTimeout(r, 5)); // distinct updatedAt
+    await run(ann, ARCHIVE_LIST, { id: todo.id });
+
+    const { board: data } = await run(ann, ARCHIVED_LISTS, { id: board.id });
+    expect(data.archivedLists).toEqual([
+      { title: "To do", archived: true, cards: [{ title: "A" }, { title: "B" }] },
+      { title: "Done", archived: true, cards: [] },
+    ]);
+  });
+
+  it("restores a list, with its cards, at the end of the board", async () => {
+    const board = await newBoard();
+    const [todo] = board.lists;
+    await addCards(ann, todo.id, ["A", "B"]);
+    await run(ann, ARCHIVE_LIST, { id: todo.id });
+    expect(await cardTitles(board.id)).toEqual({ Doing: [], Done: [] });
+
+    const { restoreList } = await run(ann, RESTORE_LIST, { id: todo.id });
+    expect(restoreList.list).toEqual({ title: "To do", archived: false });
+    expect(restoreList.board.lists.map((l: { title: string }) => l.title)).toEqual([
+      "Doing",
+      "Done",
+      "To do",
+    ]);
+    expect(restoreList.board.archivedLists).toEqual([]);
+    expect((await cardTitles(board.id))["To do"]).toEqual(["A", "B"]);
+  });
+
+  it("leaves separately archived cards archived, but restorable to the list again", async () => {
+    const board = await newBoard();
+    const [todo] = board.lists;
+    await addCards(ann, todo.id, ["A", "B"]);
+    const a = await cardId(board.id, "A");
+    await run(ann, `mutation ($id: ID!) { archiveCard(id: $id) { id } }`, { id: a });
+    await run(ann, ARCHIVE_LIST, { id: todo.id });
+    await run(ann, RESTORE_LIST, { id: todo.id });
+
+    expect((await cardTitles(board.id))["To do"]).toEqual(["B"]);
+    // With its list back, the card no longer needs a target list.
+    await run(ann, `mutation ($id: ID!) { restoreCard(id: $id) { card { id } } }`, { id: a });
+    expect((await cardTitles(board.id))["To do"]).toEqual(["B", "A"]);
+  });
+
+  it("only restores archived lists, for board members", async () => {
+    const board = await newBoard();
+    const [todo] = board.lists;
+    expect(await errorCode(run(ann, RESTORE_LIST, { id: todo.id }))).toBe("NOT_FOUND");
+    await run(ann, ARCHIVE_LIST, { id: todo.id });
+    expect(await errorCode(run(bob, RESTORE_LIST, { id: todo.id }))).toBe("NOT_FOUND");
+    expect((await run(bob, ARCHIVED_LISTS, { id: board.id })).board).toBeNull();
+  });
+});

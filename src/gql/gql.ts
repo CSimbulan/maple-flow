@@ -34,6 +34,8 @@ type Documents = {
     "\n  mutation ArchiveCard($id: ID!) {\n    archiveCard(id: $id) {\n      id\n      cards {\n        id\n      }\n    }\n  }\n": typeof types.ArchiveCardDocument,
     "\n  query ArchivedCards($id: ID!) {\n    board(id: $id) {\n      id\n      archivedCards {\n        ...CardFields\n        list {\n          id\n          title\n          archived\n        }\n      }\n    }\n  }\n": typeof types.ArchivedCardsDocument,
     "\n  mutation RestoreCard($id: ID!, $listId: ID) {\n    restoreCard(id: $id, listId: $listId) {\n      card {\n        ...CardFields\n      }\n      list {\n        id\n        title\n        cards {\n          ...CardFields\n        }\n      }\n      board {\n        id\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n": typeof types.RestoreCardDocument,
+    "\n  query ArchivedLists($id: ID!) {\n    board(id: $id) {\n      id\n      archivedLists {\n        id\n        title\n        archived\n        cards {\n          id\n        }\n      }\n    }\n  }\n": typeof types.ArchivedListsDocument,
+    "\n  mutation RestoreList($id: ID!) {\n    restoreList(id: $id) {\n      list {\n        id\n        title\n        archived\n      }\n      board {\n        id\n        lists {\n          ...ListFields\n        }\n        archivedLists {\n          id\n        }\n      }\n    }\n  }\n": typeof types.RestoreListDocument,
 };
 const documents: Documents = {
     "\n  fragment UserFields on User {\n    id\n    name\n    email\n    image\n  }\n": types.UserFieldsFragmentDoc,
@@ -56,6 +58,8 @@ const documents: Documents = {
     "\n  mutation ArchiveCard($id: ID!) {\n    archiveCard(id: $id) {\n      id\n      cards {\n        id\n      }\n    }\n  }\n": types.ArchiveCardDocument,
     "\n  query ArchivedCards($id: ID!) {\n    board(id: $id) {\n      id\n      archivedCards {\n        ...CardFields\n        list {\n          id\n          title\n          archived\n        }\n      }\n    }\n  }\n": types.ArchivedCardsDocument,
     "\n  mutation RestoreCard($id: ID!, $listId: ID) {\n    restoreCard(id: $id, listId: $listId) {\n      card {\n        ...CardFields\n      }\n      list {\n        id\n        title\n        cards {\n          ...CardFields\n        }\n      }\n      board {\n        id\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n": types.RestoreCardDocument,
+    "\n  query ArchivedLists($id: ID!) {\n    board(id: $id) {\n      id\n      archivedLists {\n        id\n        title\n        archived\n        cards {\n          id\n        }\n      }\n    }\n  }\n": types.ArchivedListsDocument,
+    "\n  mutation RestoreList($id: ID!) {\n    restoreList(id: $id) {\n      list {\n        id\n        title\n        archived\n      }\n      board {\n        id\n        lists {\n          ...ListFields\n        }\n        archivedLists {\n          id\n        }\n      }\n    }\n  }\n": types.RestoreListDocument,
 };
 
 /**
@@ -152,6 +156,14 @@ export function graphql(source: "\n  query ArchivedCards($id: ID!) {\n    board(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RestoreCard($id: ID!, $listId: ID) {\n    restoreCard(id: $id, listId: $listId) {\n      card {\n        ...CardFields\n      }\n      list {\n        id\n        title\n        cards {\n          ...CardFields\n        }\n      }\n      board {\n        id\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation RestoreCard($id: ID!, $listId: ID) {\n    restoreCard(id: $id, listId: $listId) {\n      card {\n        ...CardFields\n      }\n      list {\n        id\n        title\n        cards {\n          ...CardFields\n        }\n      }\n      board {\n        id\n        archivedCards {\n          id\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query ArchivedLists($id: ID!) {\n    board(id: $id) {\n      id\n      archivedLists {\n        id\n        title\n        archived\n        cards {\n          id\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query ArchivedLists($id: ID!) {\n    board(id: $id) {\n      id\n      archivedLists {\n        id\n        title\n        archived\n        cards {\n          id\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RestoreList($id: ID!) {\n    restoreList(id: $id) {\n      list {\n        id\n        title\n        archived\n      }\n      board {\n        id\n        lists {\n          ...ListFields\n        }\n        archivedLists {\n          id\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation RestoreList($id: ID!) {\n    restoreList(id: $id) {\n      list {\n        id\n        title\n        archived\n      }\n      board {\n        id\n        lists {\n          ...ListFields\n        }\n        archivedLists {\n          id\n        }\n      }\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

@@ -26,10 +26,15 @@ export async function requireBoardOwner(ctx: Context, boardId: string): Promise<
   return board;
 }
 
-export async function requireList(ctx: Context, listId: string): Promise<ListDoc> {
+/** The list, if the caller is a board member. `archived: true` looks among archived lists instead. */
+export async function requireList(
+  ctx: Context,
+  listId: string,
+  { archived = false }: { archived?: boolean } = {},
+): Promise<ListDoc> {
   const list = await ListModel.findOne({
     _id: objectId(listId, "List"),
-    archived: false,
+    archived,
   }).lean<ListDoc>();
   if (!list) throw notFound("List");
   await requireBoardMember(ctx, list.boardId.toString()).catch(() => {

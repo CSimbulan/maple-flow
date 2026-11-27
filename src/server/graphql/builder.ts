@@ -30,6 +30,9 @@ export function createBuilder() {
       list: ListDoc;
       board: BoardDoc;
     }>("RestoreCardPayload"),
+    RestoreListPayloadRef: builder.objectRef<{ list: ListDoc; board: BoardDoc }>(
+      "RestoreListPayload",
+    ),
   };
 }
 

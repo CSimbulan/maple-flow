@@ -86,6 +86,7 @@ export function buildSchema() {
     CardRef,
     MoveCardPayloadRef,
     RestoreCardPayloadRef,
+    RestoreListPayloadRef,
   } = parts;
   defineTypes(parts);
 
@@ -243,6 +244,23 @@ export function buildSchema() {
           const list = await requireList(ctx, id);
           await ListModel.updateOne({ _id: list._id }, { $set: { archived: true } });
           return reloadBoard(ctx, list.boardId);
+        },
+      }),
+      restoreList: t.field({
+        type: RestoreListPayloadRef,
+        description:
+          "Un-archive a list, with the cards it had, at the end of the board's lists. " +
+          "Cards archived on their own stay archived.",
+        args: { id: t.arg.id({ required: true }) },
+        resolve: async (_root, { id }, ctx) => {
+          const list = await requireList(ctx, id, { archived: true });
+          const position = await positionIn(ListModel, { boardId: list.boardId }, null);
+          const restored = (await ListModel.findByIdAndUpdate(
+            list._id,
+            { $set: { archived: false, position } },
+            { returnDocument: "after" },
+          ).lean<ListDoc>())!;
+          return { list: restored, board: await reloadBoard(ctx, list.boardId) };
         },
       }),
 

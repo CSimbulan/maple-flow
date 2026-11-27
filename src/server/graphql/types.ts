@@ -1,5 +1,5 @@
 import type { Types } from "mongoose";
-import { CardModel, type CardDoc, type UserDoc } from "../db/models";
+import { CardModel, ListModel, type CardDoc, type ListDoc, type UserDoc } from "../db/models";
 import type { SchemaParts } from "./builder";
 import type { Context } from "./context";
 
@@ -17,6 +17,7 @@ export function defineTypes({
   CardRef,
   MoveCardPayloadRef,
   RestoreCardPayloadRef,
+  RestoreListPayloadRef,
 }: SchemaParts) {
   builder.objectType(UserRef, {
     fields: (t) => ({
@@ -46,6 +47,14 @@ export function defineTypes({
         resolve: (b, _args, ctx) => ctx.loaders.listsByBoard.load(b._id.toString()),
       }),
       updatedAt: t.string({ resolve: (b) => b.updatedAt.toISOString() }),
+      archivedLists: t.field({
+        type: [ListRef],
+        description: "Archived lists on this board, most recently archived first.",
+        resolve: (b) =>
+          ListModel.find({ boardId: b._id, archived: true })
+            .sort({ updatedAt: -1 })
+            .lean<ListDoc[]>(),
+      }),
       archivedCards: t.field({
         type: [CardRef],
         description: "Archived cards on this board, most recently archived first.",
@@ -105,6 +114,13 @@ export function defineTypes({
   builder.objectType(RestoreCardPayloadRef, {
     fields: (t) => ({
       card: t.field({ type: CardRef, resolve: (p) => p.card }),
+      list: t.field({ type: ListRef, resolve: (p) => p.list }),
+      board: t.field({ type: BoardRef, resolve: (p) => p.board }),
+    }),
+  });
+
+  builder.objectType(RestoreListPayloadRef, {
+    fields: (t) => ({
       list: t.field({ type: ListRef, resolve: (p) => p.list }),
       board: t.field({ type: BoardRef, resolve: (p) => p.board }),
     }),

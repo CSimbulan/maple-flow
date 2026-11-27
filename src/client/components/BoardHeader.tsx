@@ -27,7 +27,7 @@ import type { Board } from "../board-moves";
 import { BOARD_BACKGROUNDS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { BoardsQuery, DeleteBoardMutation, UpdateBoardMutation } from "../operations";
-import { ArchivedCardsDialog } from "./ArchivedCardsDialog";
+import { ArchiveDialog } from "./ArchiveDialog";
 import { userInitial } from "./CardItem";
 import { ColorSwatches } from "./ColorSwatches";
 import { EditableTitle } from "./EditableTitle";
@@ -157,7 +157,7 @@ export function BoardHeader({ board }: { board: Board }) {
           <ListItemIcon>
             <ArchiveOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          Archived cards
+          Archived items
         </MenuItem>
         <Divider />
         <Box sx={{ px: 2, py: 1, maxWidth: 220 }}>
@@ -187,7 +187,7 @@ export function BoardHeader({ board }: { board: Board }) {
       </Menu>
 
       {shareOpen && <ShareDialog board={board} onClose={() => setShareOpen(false)} />}
-      {archivedOpen && <ArchivedCardsDialog board={board} onClose={() => setArchivedOpen(false)} />}
+      {archivedOpen && <ArchiveDialog board={board} onClose={() => setArchivedOpen(false)} />}
 
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
         <DialogTitle>Delete “{board.title}”?</DialogTitle>

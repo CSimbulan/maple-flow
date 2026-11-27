@@ -10,6 +10,7 @@ function makeCache() {
           lists: { merge: false },
           members: { merge: false },
           archivedCards: { merge: false },
+          archivedLists: { merge: false },
         },
       },
       List: { fields: { cards: { merge: false } } },
