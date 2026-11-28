@@ -19,6 +19,7 @@ import { getApolloClient } from "../apollo/client";
 import { CurrentOrgContext, rememberOrg } from "../current-org";
 import { OrgSwitcher } from "./OrgSwitcher";
 import { Sidebar } from "./Sidebar";
+import { MapleLogo } from "./MapleLogo";
 import { UserAvatar } from "./UserAvatar";
 
 export type FrameUser = {
@@ -85,20 +86,33 @@ export function AppFrame({
               >
                 <MenuIcon />
               </IconButton>
-              <Typography
+              {/* Logo and name go home together; phones show only the logo. */}
+              <Box
                 component={Link}
                 href="/boards"
-                variant="h6"
+                aria-label="Maple Flow"
                 sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
                   color: "inherit",
                   textDecoration: "none",
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                  display: { xs: "none", sm: "block" },
+                  flexShrink: 0,
                 }}
               >
-                Maple Flow
-              </Typography>
+                <MapleLogo aria-hidden sx={{ fontSize: 28 }} />
+                <Typography
+                  component="span"
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                    display: { xs: "none", sm: "block" },
+                  }}
+                >
+                  Maple Flow
+                </Typography>
+              </Box>
               <OrgSwitcher />
               <Box sx={{ flexGrow: 1 }} />
               <IconButton

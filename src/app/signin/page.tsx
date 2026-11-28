@@ -9,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { BRAND_GRADIENT } from "@/brand";
+import { MapleLogo } from "@/client/components/MapleLogo";
 import { auth, devLoginEnabled, oauthProviders, signIn } from "@/server/auth/config";
 
 const ERRORS: Record<string, string> = {
@@ -59,7 +60,12 @@ export default async function SignInPage({
         }}
       >
         <Stack spacing={3}>
-          <Box>
+          <Box sx={{ textAlign: "center" }}>
+            <MapleLogo
+              gradient
+              aria-hidden
+              sx={{ fontSize: 96, display: "block", mx: "auto", mb: 2 }}
+            />
             <Typography variant="h4" component="h1" color="primary" sx={{ fontWeight: 700 }}>
               Maple Flow
             </Typography>
