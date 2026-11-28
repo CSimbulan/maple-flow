@@ -143,6 +143,29 @@ replaced by tags and are no longer read.
   `src/client/operations.ts`.
 - Brand colors are in `src/brand.ts`; every color behind white text keeps ≥4.5:1 contrast.
 
+## UI conventions
+
+The owner's choices; follow them in new UI and ask before departing from them.
+
+- **Title Case** for buttons, menu items, page and section headings, dialog titles, form field
+  labels and tooltips ("Create Workspace", "Members & Settings", "Due Date"). Sentences
+  (helper text, descriptions, notifications, the activity log), placeholders and small toggles
+  ("Show more", "Newest first") stay in sentence case.
+- **Short words** (a, the, and, to, by, of, from, with…): ask the owner case by case. They often
+  drop them ("Add Card", "Archive List", "Invite Guest by Email", "Comments & Activity") but
+  have kept some lowercase ("Restore to", "Add by Email", "Remove from Workspace").
+- **No "…"** at the end of a button or menu item, even when it opens a confirmation
+  ("Delete Board", not "Delete Board…").
+- **Dialog buttons** (`src/client/buttons.ts`; the theme's primary is red, so set these
+  explicitly): save/create is solid MUI blue (`blueContainedSx`), exit/cancel is blue outlined
+  (`blueOutlinedSx`), and a destructive confirm is a red contained button labelled just
+  "Delete" (`ConfirmDelete`; Leave Workspace and Remove Member also stay red). Action rows use
+  `sx={{ px: 3, pb: 2 }}`. Dialogs that save as you go (Share, Archived Items, Edit Tags) have
+  only an Exit button.
+- **Shared pieces**: `UserAvatar` for every avatar, `ColorSwatches` for every color picker,
+  `PageLoading` for a page's loading state, `MapleLogo` for the logo, `formatDate`
+  (`src/lib/format-date.ts`) for dates shown to people (viewer's locale and time zone).
+
 ## Library gotchas (versions newer than most training data)
 
 - **MUI 9**: system props (`fontWeight=`, `alignItems=` on Typography/Stack) are gone, so use `sx`.
