@@ -15,7 +15,7 @@ import { blue, green } from "@mui/material/colors";
 import { useState, type KeyboardEvent } from "react";
 import type { ActivityFieldsFragment, CommentFieldsFragment } from "@/gql/graphql";
 import { readFeedPrefs, writeFeedPrefs, type FeedPrefs } from "../feed-prefs";
-import { activityGroupText, groupActivity } from "../activity-text";
+import { activityGroupText, groupActivity, type TextPart } from "../activity-text";
 import { blueContainedSx, blueOutlinedSx } from "../buttons";
 import { errorMessage, useNotify } from "../notify";
 import {
@@ -26,6 +26,8 @@ import {
 } from "../operations";
 import { userInitial } from "./CardItem";
 import { ConfirmDelete } from "./ConfirmDelete";
+import { PriorityIcon } from "./PriorityIcon";
+import { TagChip } from "./TagChip";
 
 // Comments are light blue and activity light green; each toggle uses its color.
 const COMMENT_BG = blue[50];
@@ -381,18 +383,47 @@ function ActivityItem({ group }: { group: ActivityFieldsFragment[] }) {
           <Box component="span" sx={{ fontWeight: 600 }}>
             {personName(activity.actor)}
           </Box>{" "}
-          {activityGroupText(group).map((part, i) =>
-            part.strong ? (
-              <Box key={i} component="span" sx={{ fontWeight: 600 }}>
-                {part.text}
-              </Box>
-            ) : (
-              <span key={i}>{part.text}</span>
-            ),
-          )}
+          {activityGroupText(group).map((part, i) => (
+            <ActivityPart key={i} part={part} />
+          ))}
         </Typography>
         <Timestamp iso={activity.createdAt} />
       </Box>
     </Box>
   );
+}
+
+/** One piece of an activity sentence: plain, bold, a tag chip, or a priority with its icon. */
+function ActivityPart({ part }: { part: TextPart }) {
+  if (part.tag) {
+    return (
+      <Box component="span" sx={{ display: "inline-block", verticalAlign: "middle", my: 0.25 }}>
+        <TagChip tag={part.tag} />
+      </Box>
+    );
+  }
+  if (part.priority) {
+    return (
+      <Box
+        component="span"
+        sx={{
+          display: "inline-flex",
+          alignItems: "center",
+          verticalAlign: "bottom",
+          fontWeight: 600,
+        }}
+      >
+        <PriorityIcon priority={part.priority} decorative />
+        {part.text}
+      </Box>
+    );
+  }
+  if (part.strong) {
+    return (
+      <Box component="span" sx={{ fontWeight: 600 }}>
+        {part.text}
+      </Box>
+    );
+  }
+  return <span>{part.text}</span>;
 }

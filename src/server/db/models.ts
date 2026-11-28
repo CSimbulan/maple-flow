@@ -122,6 +122,11 @@ export interface ActivityDoc {
   /** Tag names (TAGS) or user ids (ASSIGNEES) added and removed. */
   added: string[];
   removed: string[];
+  /**
+   * Colors of the tags in `added` and `removed` when it happened (TAGS). Missing on entries
+   * from before colors were recorded.
+   */
+  tagColors?: { name: string; color: string }[];
   createdAt: Date;
 }
 
@@ -222,6 +227,10 @@ const activitySchema = new Schema<ActivityDoc>(
     to: { type: String, default: null },
     added: { type: [String], default: [] },
     removed: { type: [String], default: [] },
+    tagColors: {
+      type: [new Schema({ name: String, color: String }, { _id: false })],
+      default: undefined,
+    },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

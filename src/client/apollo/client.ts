@@ -28,6 +28,8 @@ function makeCache() {
       },
       CardActivity: {
         fields: {
+          addedTags: { merge: false },
+          removedTags: { merge: false },
           addedUsers: { merge: false },
           removedUsers: { merge: false },
         },

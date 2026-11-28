@@ -46,6 +46,7 @@ export function createBuilder() {
     }),
     CommentRef: builder.objectRef<CommentDoc>("Comment"),
     ActivityRef: builder.objectRef<ActivityDoc>("CardActivity"),
+    ActivityTagRef: builder.objectRef<{ name: string; color: string }>("ActivityTag"),
     ActivityKindEnum: builder.enumType("ActivityKind", {
       description: "What happened to a card in a CardActivity entry.",
       values: ACTIVITY_KINDS,

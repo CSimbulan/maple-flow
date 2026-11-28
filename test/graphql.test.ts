@@ -1049,10 +1049,10 @@ describe("comments and activity", () => {
     const { board, a, b } = await setup();
     const [todo, doing] = board.lists;
     const tags = (
-      await run(ann, `query ($id: ID!) { board(id: $id) { tags { id name } } }`, {
+      await run(ann, `query ($id: ID!) { board(id: $id) { tags { id name color } } }`, {
         id: board.id,
       })
-    ).board.tags as { id: string; name: string }[];
+    ).board.tags as { id: string; name: string; color: string }[];
 
     await run(
       ann,
@@ -1134,6 +1134,13 @@ describe("comments and activity", () => {
       t: tags[0].id,
     });
     expect((await feed(a)).activity[3].added).toEqual([tags[0].name, tags[1].name]);
+    // The deleted tag keeps the chip color it had.
+    const TAG_FEED = `query ($id: ID!) { card(id: $id) { activity { addedTags { name color } } } }`;
+    const colors = (await run(ann, TAG_FEED, { id: a })).card.activity[3].addedTags;
+    expect(colors).toEqual([
+      { name: tags[0].name, color: tags[0].color },
+      { name: tags[1].name, color: tags[1].color },
+    ]);
   });
 
   it("logs a new card's starting details with its creation, at the same time", async () => {
@@ -1165,6 +1172,24 @@ describe("comments and activity", () => {
     await addCards(ann, board.lists[0].id, ["Plain"]);
     const plain = (await feed(await cardId(board.id, "Plain"))).activity;
     expect(plain.map((e: { kind: string }) => e.kind)).toEqual(["CREATED"]);
+  });
+
+  it("colors tags in entries from before colors were recorded by the board's tags", async () => {
+    const { board, a } = await setup();
+    const card = (await CardModel.findById(a).lean())!;
+    await ActivityModel.create({
+      cardId: card._id,
+      boardId: card.boardId,
+      actorId: ann,
+      kind: "TAGS",
+      added: ["bug", "Gone"],
+    });
+    const TAG_FEED = `query ($id: ID!) { card(id: $id) { activity { addedTags { name color } } } }`;
+    const bug = (await BoardModel.findById(board.id).lean())!.tags!.find((t) => t.name === "Bug")!;
+    expect((await run(ann, TAG_FEED, { id: a })).card.activity.at(-1).addedTags).toEqual([
+      { name: "bug", color: bug.color },
+      { name: "Gone", color: "#9e9e9e" },
+    ]);
   });
 
   it("deletes comments and activity with their card, list or board", async () => {

@@ -12,6 +12,12 @@ enum ActivityKind {
   TAGS
 }
 
+"""A tag as it was when an activity entry was recorded."""
+type ActivityTag {
+  color: String!
+  name: String!
+}
+
 type Board {
   """Archived cards on this board, most recently archived first."""
   archivedCards: [Card!]!
@@ -70,6 +76,9 @@ type CardActivity {
   """Tag names added (TAGS)."""
   added: [String!]!
 
+  """Tags added (TAGS), with their colors at the time."""
+  addedTags: [ActivityTag!]!
+
   """People assigned (ASSIGNEES)."""
   addedUsers: [User!]!
   createdAt: String!
@@ -83,6 +92,9 @@ type CardActivity {
 
   """Tag names removed (TAGS)."""
   removed: [String!]!
+
+  """Tags removed (TAGS), with their colors at the time."""
+  removedTags: [ActivityTag!]!
 
   """People unassigned (ASSIGNEES)."""
   removedUsers: [User!]!

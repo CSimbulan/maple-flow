@@ -625,8 +625,14 @@ export const ActivityFields = graphql(`
     createdAt
     from
     to
-    added
-    removed
+    addedTags {
+      name
+      color
+    }
+    removedTags {
+      name
+      color
+    }
     actor {
       ...UserFields
     }

@@ -5,7 +5,7 @@ import { requireUserId } from "./permissions";
 
 /** An activity entry before it's stored: the kind plus whichever details it uses. */
 export type ActivityEntry = Pick<ActivityDoc, "kind"> &
-  Partial<Pick<ActivityDoc, "from" | "to" | "added" | "removed">>;
+  Partial<Pick<ActivityDoc, "from" | "to" | "added" | "removed" | "tagColors">>;
 
 /** Record what the signed-in user did to a card. */
 export async function logActivity(
@@ -53,8 +53,18 @@ export function cardChanges(
   if (Array.isArray($set.tagIds)) {
     const { added, removed } = diffIds(card.tagIds ?? [], $set.tagIds as string[]);
     if (added.length || removed.length) {
-      const nameOf = (id: string) => tags.find((t) => t._id.toString() === id)?.name ?? "a tag";
-      entries.push({ kind: "TAGS", added: added.map(nameOf), removed: removed.map(nameOf) });
+      const tagOf = (id: string) => tags.find((t) => t._id.toString() === id);
+      const nameOf = (id: string) => tagOf(id)?.name ?? "a tag";
+      entries.push({
+        kind: "TAGS",
+        added: added.map(nameOf),
+        removed: removed.map(nameOf),
+        // Kept with the names, so the feed can show the chips as they looked then.
+        tagColors: [...added, ...removed].flatMap((id) => {
+          const tag = tagOf(id);
+          return tag ? [{ name: tag.name, color: tag.color }] : [];
+        }),
+      });
     }
   }
   if ("dueDate" in $set) {

@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { activityGroupText, activityText, groupActivity } from "./activity-text";
 
-const base = { from: null, to: null, added: [], removed: [], addedUsers: [], removedUsers: [] };
+const base = {
+  from: null,
+  to: null,
+  addedTags: [],
+  removedTags: [],
+  addedUsers: [],
+  removedUsers: [],
+};
+const tag = (name: string) => ({ name, color: "#c62828" });
 const say = (a: Partial<Parameters<typeof activityText>[0]>) =>
   activityText({ ...base, kind: "CREATED", ...a })
     .map((p) => (p.strong ? `*${p.text}*` : p.text))
@@ -16,9 +24,15 @@ describe("activityText", () => {
   });
 
   it("lists added and removed tags and people", () => {
-    expect(say({ kind: "TAGS", added: ["Bug"], removed: ["UX/UI", "Docs", "Test"] })).toBe(
-      "added tag *Bug* and removed tags *UX/UI*, *Docs* and *Test*",
-    );
+    expect(
+      say({
+        kind: "TAGS",
+        addedTags: [tag("Bug")],
+        removedTags: [tag("UX/UI"), tag("Docs"), tag("Test")],
+      }),
+    ).toBe("added tag Bug and removed tags UX/UI, Docs and Test");
+    const [, chip] = activityText({ ...base, kind: "TAGS", addedTags: [tag("Bug")] });
+    expect(chip.tag).toEqual(tag("Bug"));
     const user = (name: string) => ({ name, email: `${name}@x.com` });
     expect(say({ kind: "ASSIGNEES", addedUsers: [user("Ann"), user("Bob")] })).toBe(
       "assigned *Ann* and *Bob*",
@@ -32,6 +46,7 @@ describe("activityText", () => {
       "changed the priority from *Low* to *Medium*",
     );
     expect(say({ kind: "PRIORITY", from: "LOW" })).toBe("removed the priority (was *Low*)");
+    expect(activityText({ ...base, kind: "PRIORITY", to: "HIGH" })[1].priority).toBe("HIGH");
     expect(say({ kind: "DUE_DATE", to: "2026-12-03" })).toMatch(
       /^set the due date to \*.*3.*2026\*$/,
     );
@@ -74,7 +89,7 @@ describe("activityGroupText for a new card", () => {
     const text = activityGroupText([
       entry({ kind: "CREATED", to: "To do" }),
       entry({ kind: "DESCRIPTION" }),
-      entry({ kind: "TAGS", added: ["Bug"] }),
+      entry({ kind: "TAGS", addedTags: [tag("Bug")] }),
       entry({ kind: "PRIORITY", to: "HIGH" }),
     ])
       .map((p) => p.text)

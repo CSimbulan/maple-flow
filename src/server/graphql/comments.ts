@@ -5,12 +5,14 @@ import {
   type ActivityDoc,
   type CardDoc,
   type CommentDoc,
+  type TagDoc,
   type UserDoc,
 } from "../db/models";
 import type { SchemaParts } from "./builder";
 import type { Context } from "./context";
 import { forbidden, notFound, objectId, parse } from "./errors";
 import { requireCard, requireUserId } from "./permissions";
+import { sameTagName, tagsOf } from "./tags";
 
 const commentText = z.string().trim().min(1, "Comment can't be empty").max(5_000);
 
@@ -45,7 +47,16 @@ export function defineCommentSchema({
   CommentRef,
   ActivityRef,
   ActivityKindEnum,
+  ActivityTagRef,
 }: SchemaParts) {
+  builder.objectType(ActivityTagRef, {
+    description: "A tag as it was when an activity entry was recorded.",
+    fields: (t) => ({
+      name: t.exposeString("name"),
+      color: t.exposeString("color"),
+    }),
+  });
+
   builder.objectType(CommentRef, {
     fields: (t) => ({
       id: t.id({ resolve: (c) => c._id.toString() }),
@@ -96,6 +107,16 @@ export function defineCommentSchema({
       removed: t.stringList({
         description: "Tag names removed (TAGS).",
         resolve: (a) => (a.kind === "TAGS" ? a.removed : []),
+      }),
+      addedTags: t.field({
+        type: [ActivityTagRef],
+        description: "Tags added (TAGS), with their colors at the time.",
+        resolve: (a, _args, ctx) => (a.kind === "TAGS" ? tagsWithColors(ctx, a, a.added) : []),
+      }),
+      removedTags: t.field({
+        type: [ActivityTagRef],
+        description: "Tags removed (TAGS), with their colors at the time.",
+        resolve: (a, _args, ctx) => (a.kind === "TAGS" ? tagsWithColors(ctx, a, a.removed) : []),
       }),
       addedUsers: t.field({
         type: [UserRef],
@@ -179,6 +200,34 @@ export function defineCommentSchema({
       },
     }),
   }));
+}
+
+/** Fallback for tags whose color wasn't recorded or isn't on the board any more. */
+const UNKNOWN_TAG_COLOR = "#9e9e9e";
+
+/**
+ * Tag names with the colors they had (recorded with the entry). Entries from before colors
+ * were recorded use the board's tag of that name today, if there still is one.
+ */
+async function tagsWithColors(
+  ctx: Context,
+  a: ActivityDoc,
+  names: string[],
+): Promise<{ name: string; color: string }[]> {
+  let current: TagDoc[] | null = null;
+  const result = [];
+  for (const name of names) {
+    let color = a.tagColors?.find((t) => t.name === name)?.color;
+    if (!color) {
+      if (!current) {
+        const board = await ctx.loaders.boardById.load(a.boardId.toString());
+        current = board ? await tagsOf(board) : [];
+      }
+      color = current.find((t) => sameTagName(t.name, name))?.color;
+    }
+    result.push({ name, color: color ?? UNKNOWN_TAG_COLOR });
+  }
+  return result;
 }
 
 async function users(ctx: Context, ids: string[]): Promise<UserDoc[]> {
