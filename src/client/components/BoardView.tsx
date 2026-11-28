@@ -307,9 +307,12 @@ function BoardCanvas({ board }: { board: Board }) {
               submitLabel="Add List"
               onAdd={(title) =>
                 createList({ variables: { boardId: board.id, title, color: newListColor } })
-                  // The composer stays open; the next list starts on the next default color.
+                  // The next list starts on the next default color.
                   .then(() => setPickedListColor(null))
-                  .catch((err) => notify(errorMessage(err)))
+                  .catch((err) => {
+                    notify(errorMessage(err));
+                    throw err; // keeps the composer open to retry
+                  })
               }
             >
               <ColorSwatches

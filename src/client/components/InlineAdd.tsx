@@ -10,7 +10,10 @@ import Tooltip from "@mui/material/Tooltip";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { BRAND } from "@/brand";
 
-/** "+ Add List" style composer. Stays open after adding so several items can be entered. */
+/**
+ * "+ Add List" style composer. Closes after a successful add; if `onAdd` rejects (it reports the
+ * error itself), it stays open with the text so it can be retried.
+ */
 export function InlineAdd({
   label,
   placeholder,
@@ -74,6 +77,9 @@ export function InlineAdd({
     try {
       await onAdd(value);
       setTitle("");
+      setOpen(false);
+    } catch {
+      // Already reported by onAdd; keep the composer open to retry.
     } finally {
       setBusy(false);
     }
