@@ -12,7 +12,6 @@ import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
-import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
@@ -34,6 +33,7 @@ import { UserAvatar } from "./UserAvatar";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { NotFound, PageContainer } from "./OrgPages";
+import { PageLoading } from "./PageLoading";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -85,14 +85,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
         {error.message}
       </Alert>
     );
-  if (loading && !data) {
-    return (
-      <PageContainer>
-        <Skeleton width={240} height={40} />
-        <Skeleton variant="rounded" height={240} sx={{ mt: 2 }} />
-      </PageContainer>
-    );
-  }
+  if (loading && !data) return <PageLoading label="Loading workspace settings" />;
   const org = data?.workspace;
   if (!org) return <NotFound what="workspace" />;
   const myId = me?.me?.id;

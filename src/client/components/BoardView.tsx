@@ -26,7 +26,6 @@ import {
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
@@ -56,6 +55,7 @@ import { ColorSwatches } from "./ColorSwatches";
 import { CardFace } from "./CardItem";
 import { InlineAdd } from "./InlineAdd";
 import { ListColumn, ListOverlay, listWidthSx } from "./ListColumn";
+import { PageLoading } from "./PageLoading";
 
 type DndKind = "card" | "list" | "drop";
 
@@ -82,15 +82,7 @@ const collisionDetection: CollisionDetection = (args) => {
 export function BoardView({ boardId }: { boardId: string }) {
   const { data, loading, error } = useQuery(BoardDetailQuery, { variables: { id: boardId } });
 
-  if (loading && !data) {
-    return (
-      <Stack direction="row" spacing={1.5} sx={{ p: 2 }}>
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} variant="rounded" height={240} sx={listWidthSx} />
-        ))}
-      </Stack>
-    );
-  }
+  if (loading && !data) return <PageLoading label="Loading board" />;
   if (error)
     return (
       <Alert severity="error" sx={{ m: 2 }}>

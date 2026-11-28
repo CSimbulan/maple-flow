@@ -12,7 +12,6 @@ import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
@@ -32,6 +31,7 @@ import { AddTile, BoardTiles, TileGrid, tileSx } from "./BoardTiles";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { NameDialog } from "./NameDialog";
+import { PageLoading } from "./PageLoading";
 
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
@@ -74,7 +74,7 @@ export function OrgOverview({ orgId }: { orgId: string }) {
         {error.message}
       </Alert>
     );
-  if (loading && !data) return <LoadingPage />;
+  if (loading && !data) return <PageLoading />;
   const org = data?.workspace;
   if (!org) return <NotFound what="workspace" />;
 
@@ -168,7 +168,7 @@ export function ProjectPage({ projectId }: { projectId: string }) {
         {error.message}
       </Alert>
     );
-  if (loading && !data) return <LoadingPage />;
+  if (loading && !data) return <PageLoading />;
   if (!project) return <NotFound what="project" />;
   const org = project.workspace;
 
@@ -244,20 +244,6 @@ export function ProjectPage({ projectId }: { projectId: string }) {
           : ""}
         , for everyone in {org.name}. It can&apos;t be undone.
       </ConfirmDelete>
-    </PageContainer>
-  );
-}
-
-function LoadingPage() {
-  return (
-    <PageContainer>
-      <Skeleton width={240} height={40} />
-      <Skeleton width={160} sx={{ mb: 3 }} />
-      <TileGrid>
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} variant="rounded" sx={{ height: tileSx.height }} />
-        ))}
-      </TileGrid>
     </PageContainer>
   );
 }
