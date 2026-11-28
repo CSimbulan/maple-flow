@@ -9,7 +9,9 @@ const SIZE = 112;
 
 /**
  * Shown while a page's data loads: a red spinning ring with the gradient maple leaf in the
- * middle, centered in the page. `label` is what screen readers announce.
+ * middle. It fills the page's main area (AppFrame's flex column below the top bar, beside the
+ * sidebar when it's docked, full width when it's a drawer), so it's centered in what's visible.
+ * `label` is what screen readers announce.
  */
 export function PageLoading({ label = "Loading" }: { label?: string }) {
   return (
@@ -18,7 +20,7 @@ export function PageLoading({ label = "Loading" }: { label?: string }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: "60vh",
+        flexGrow: 1,
         p: 2,
       }}
     >
