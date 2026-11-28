@@ -39,7 +39,7 @@ import {
 import { useIsPhone } from "../useIsPhone";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { TagChip } from "./TagChip";
-import { blueOutlinedSx } from "../buttons";
+import { blueContainedSx, blueOutlinedSx } from "../buttons";
 
 type ArchivedCard = NonNullable<ArchivedCardsData["board"]>["archivedCards"][number];
 type ArchivedList = NonNullable<ArchivedListsData["board"]>["archivedLists"][number];
@@ -53,7 +53,7 @@ export function ArchiveDialog({ board, onClose }: { board: Board; onClose: () =>
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm" fullScreen={isPhone}>
-      <DialogTitle sx={{ pb: 0 }}>Archived items</DialogTitle>
+      <DialogTitle sx={{ pb: 0 }}>Archived Items</DialogTitle>
       <Tabs
         value={tab}
         onChange={(_e, value: ArchiveTab) => setTab(value)}
@@ -244,7 +244,7 @@ function ArchivedListRow({ list }: { list: ArchivedList }) {
       </Stack>
       <ConfirmDelete
         open={confirmDelete}
-        title={`Delete list “${list.title}”?`}
+        title={`Delete List “${list.title}”?`}
         busy={deleting}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => deleteList(list.id, list.title)}
@@ -290,7 +290,7 @@ function RestoreButton({ onClick, disabled }: { onClick: () => void; disabled: b
       startIcon={<UnarchiveIcon />}
       onClick={onClick}
       disabled={disabled}
-      sx={{ flexShrink: 0 }}
+      sx={{ ...blueContainedSx, flexShrink: 0 }}
     >
       Restore
     </Button>
@@ -299,7 +299,7 @@ function RestoreButton({ onClick, disabled }: { onClick: () => void; disabled: b
 
 function DeleteButton({ what, onClick }: { what: "card" | "list"; onClick: () => void }) {
   return (
-    <Tooltip title="Delete permanently">
+    <Tooltip title="Delete Permanently">
       <IconButton
         size="small"
         color="error"

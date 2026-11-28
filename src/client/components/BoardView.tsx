@@ -104,7 +104,7 @@ export function BoardView({ boardId }: { boardId: string }) {
         sx={{ m: 2 }}
         action={
           <Button component={Link} href="/boards" color="inherit" size="small">
-            Your boards
+            Your Boards
           </Button>
         }
       >
@@ -127,7 +127,7 @@ function BoardCanvas({ board }: { board: Board }) {
   const [moveList] = useMutation(MoveListMutation);
   const [createList] = useMutation(CreateListMutation);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
-  // The list "Add a card" was clicked in, while its new-card dialog is open.
+  // The list "Add Card" was clicked in, while its new-card dialog is open.
   const [newCardList, setNewCardList] = useState<{ id: string; title: string } | null>(null);
   // Color for the next new list: the default for its place unless one was picked.
   const [pickedListColor, setPickedListColor] = useState<string | null>(null);
@@ -310,9 +310,9 @@ function BoardCanvas({ board }: { board: Board }) {
           <Box sx={listWidthSx}>
             <InlineAdd
               variant="dark"
-              label={board.lists.length ? "Add another list" : "Add a list"}
+              label="Add List"
               placeholder="Enter list title"
-              submitLabel="Add list"
+              submitLabel="Add List"
               onAdd={(title) =>
                 createList({ variables: { boardId: board.id, title, color: newListColor } })
                   // The composer stays open; the next list starts on the next default color.

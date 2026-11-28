@@ -7,6 +7,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import type { ReactNode } from "react";
+import { blueOutlinedSx } from "../buttons";
 
 /** "Are you sure?" step before a permanent delete (or other drastic step). Cancel is the default. */
 export function ConfirmDelete({
@@ -14,7 +15,7 @@ export function ConfirmDelete({
   title,
   children,
   busy,
-  confirmLabel = "Delete permanently",
+  confirmLabel = "Delete",
   onConfirm,
   onClose,
 }: {
@@ -34,7 +35,7 @@ export function ConfirmDelete({
       </DialogContent>
       {/* Same 24px side inset as the title and text above, and 16px below the buttons. */}
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} autoFocus>
+        <Button variant="outlined" onClick={onClose} autoFocus sx={blueOutlinedSx}>
           Cancel
         </Button>
         <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>

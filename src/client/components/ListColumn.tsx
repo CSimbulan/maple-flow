@@ -148,7 +148,7 @@ export function ListColumn({
             run(archiveList({ variables: { id: list.id } }));
           }}
         >
-          Archive this list
+          Archive List
         </MenuItem>
         <MenuItem
           sx={{ color: "error.main" }}
@@ -157,12 +157,12 @@ export function ListColumn({
             setConfirmDelete(true);
           }}
         >
-          Delete this list…
+          Delete List
         </MenuItem>
         <Divider />
         <Box sx={{ px: 2, py: 1, maxWidth: 220 }}>
           <Typography variant="caption" color="text.secondary">
-            Header color
+            Header Color
           </Typography>
           <Box sx={{ mt: 1 }}>
             <ColorSwatches
@@ -185,7 +185,7 @@ export function ListColumn({
       </Menu>
       <ConfirmDelete
         open={confirmDelete}
-        title={`Delete list “${list.title}”?`}
+        title={`Delete List “${list.title}”?`}
         busy={deleting}
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {
@@ -223,7 +223,7 @@ export function ListColumn({
           onClick={onAddCard}
           sx={{ justifyContent: "flex-start", color: "text.secondary" }}
         >
-          Add a card
+          Add Card
         </Button>
       </Box>
     </Box>

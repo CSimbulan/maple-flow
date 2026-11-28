@@ -48,7 +48,7 @@ export function NotFound({ what }: { what: string }) {
         severity="info"
         action={
           <Button component={Link} href="/boards" color="inherit" size="small">
-            Go home
+            Go Home
           </Button>
         }
       >
@@ -86,7 +86,7 @@ export function OrgOverview({ orgId }: { orgId: string }) {
       <Typography color="text.secondary" sx={{ mb: 3 }}>
         {plural(org.members.length, "member")} ·{" "}
         <Link href={`/w/${org.id}/settings`} style={{ color: "inherit" }}>
-          Members & settings
+          Members & Settings
         </Link>
       </Typography>
       <Typography variant="h6" component="h2" sx={{ mb: 1.5 }}>
@@ -123,12 +123,12 @@ export function OrgOverview({ orgId }: { orgId: string }) {
             </Typography>
           </ButtonBase>
         ))}
-        <AddTile label="New project" onClick={() => setCreating(true)} />
+        <AddTile label="New Project" onClick={() => setCreating(true)} />
       </TileGrid>
       {creating && (
         <NameDialog
-          title="New project"
-          label="Project name"
+          title="New Project"
+          label="Project Name"
           onClose={() => setCreating(false)}
           onSubmit={async (name) => {
             try {
@@ -219,13 +219,13 @@ export function ProjectPage({ projectId }: { projectId: string }) {
             setConfirmDelete(true);
           }}
         >
-          Delete project…
+          Delete Project
         </MenuItem>
       </Menu>
       <BoardTiles boards={project.boards} projectId={project.id} />
       <ConfirmDelete
         open={confirmDelete}
-        title={`Delete project “${project.name}”?`}
+        title={`Delete Project “${project.name}”?`}
         busy={deleting}
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {

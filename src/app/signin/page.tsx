@@ -101,7 +101,7 @@ export default async function SignInPage({
                     helperText="Development only: signs in with just an email."
                   />
                   <Button type="submit" variant="contained" size="large">
-                    Sign in (dev)
+                    Sign In (Dev)
                   </Button>
                 </Stack>
               </form>

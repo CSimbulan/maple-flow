@@ -81,13 +81,13 @@ export function OrgSwitcher() {
           <ListItemIcon>
             <AddIcon fontSize="small" />
           </ListItemIcon>
-          Create workspace
+          Create Workspace
         </MenuItem>
       </Menu>
       {creating && (
         <NameDialog
-          title="Create workspace"
-          label="Workspace name"
+          title="Create Workspace"
+          label="Workspace Name"
           help="You'll be its owner. It starts with one project, “General”."
           onClose={() => setCreating(false)}
           onSubmit={async (name) => {

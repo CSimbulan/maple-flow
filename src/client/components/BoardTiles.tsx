@@ -15,6 +15,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { blueContainedSx, blueOutlinedSx } from "../buttons";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { BRAND } from "@/brand";
 import { BOARD_BACKGROUNDS } from "../colors";
@@ -119,7 +120,7 @@ export function BoardTiles({
               </Typography>
             </ButtonBase>
           ))}
-      {projectId && <AddTile label="Create new board" onClick={() => setOpen(true)} />}
+      {projectId && <AddTile label="Create New Board" onClick={() => setOpen(true)} />}
       {open && projectId && (
         <CreateBoardDialog projectId={projectId} onClose={() => setOpen(false)} />
       )}
@@ -148,13 +149,13 @@ function CreateBoardDialog({ projectId, onClose }: { projectId: string; onClose:
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="xs">
       <form onSubmit={submit}>
-        <DialogTitle>Create board</DialogTitle>
+        <DialogTitle>Create Board</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Box sx={{ height: 80, borderRadius: 2, bgcolor: background }} />
             <TextField
               autoFocus
-              label="Board title"
+              label="Board Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -163,9 +164,16 @@ function CreateBoardDialog({ projectId, onClose }: { projectId: string; onClose:
             <ColorSwatches colors={BOARD_BACKGROUNDS} value={background} onChange={setBackground} />
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained" disabled={!title.trim() || loading}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="outlined" onClick={onClose} sx={blueOutlinedSx}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            sx={blueContainedSx}
+            disabled={!title.trim() || loading}
+          >
             Create
           </Button>
         </DialogActions>

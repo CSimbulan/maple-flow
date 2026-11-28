@@ -20,7 +20,7 @@ const cardsIn = (page: Page, list: string) =>
 test("create a board, add cards, and drag them between lists", async ({ page }) => {
   await page.goto("/signin");
   await page.getByLabel("Email").fill(`e2e-${Date.now()}@example.test`);
-  await page.getByRole("button", { name: "Sign in (dev)" }).click();
+  await page.getByRole("button", { name: "Sign In (Dev)" }).click();
   // New users land in their own workspace, which starts with a "General" project.
   await expect(page).toHaveURL(/\/w\/[0-9a-f]{24}$/);
   await page
@@ -29,15 +29,15 @@ test("create a board, add cards, and drag them between lists", async ({ page }) 
     .click();
   await expect(page).toHaveURL(/\/w\/[0-9a-f]{24}\/p\/[0-9a-f]{24}$/);
 
-  await page.getByText("Create new board").click();
-  await page.getByLabel("Board title").fill("E2E board");
+  await page.getByText("Create New Board").click();
+  await page.getByLabel("Board Title").fill("E2E board");
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page).toHaveURL(/\/b\/[0-9a-f]{24}$/);
 
   const todo = page.getByLabel("List To do", { exact: true });
-  // "Add a card" opens the card dialog; Enter in the title field adds the card and closes it.
+  // "Add Card" opens the card dialog; Enter in the title field adds the card and closes it.
   for (const title of ["First", "Second", "Third"]) {
-    await todo.getByRole("button", { name: "Add a card" }).click();
+    await todo.getByRole("button", { name: "Add Card" }).click();
     await page.getByLabel("Card title").fill(title);
     await page.keyboard.press("Enter");
     await expect(todo.getByLabel(`Card ${title}`, { exact: true })).toBeVisible();

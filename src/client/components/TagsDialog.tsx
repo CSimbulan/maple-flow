@@ -19,7 +19,7 @@ import Typography from "@mui/material/Typography";
 import { useState, type FormEvent } from "react";
 import { TAG_COLORS, tagTextColor } from "@/lib/tags";
 import type { Board } from "../board-moves";
-import { blueContainedSx } from "../buttons";
+import { blueOutlinedSx } from "../buttons";
 import { errorMessage, useNotify } from "../notify";
 import { CreateTagMutation, DeleteTagMutation, UpdateTagMutation } from "../operations";
 import { useIsPhone } from "../useIsPhone";
@@ -65,19 +65,9 @@ export function TagsDialog({ board, onClose }: { board: Board; onClose: () => vo
       </DialogContent>
       {/* Tag changes save as they're made, so both buttons just close the dialog. */}
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          sx={{
-            color: "text.secondary",
-            borderColor: "grey.400",
-            "&:hover": { borderColor: "grey.600", bgcolor: "grey.100" },
-          }}
-        >
+        {/* Tag edits save as they're made, so this only closes the dialog. */}
+        <Button variant="outlined" onClick={onClose} sx={blueOutlinedSx}>
           Exit
-        </Button>
-        <Button variant="contained" onClick={onClose} sx={blueContainedSx}>
-          Done
         </Button>
       </DialogActions>
     </Dialog>
@@ -149,9 +139,8 @@ function TagRow({ boardId, tag }: { boardId: string; tag: Tag }) {
       </Box>
       <ConfirmDelete
         open={confirmDelete}
-        title={`Delete tag “${tag.name}”?`}
+        title={`Delete Tag “${tag.name}”?`}
         busy={deleting}
-        confirmLabel="Delete tag"
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
       >
@@ -186,7 +175,7 @@ function NewTag({ boardId, count }: { boardId: string; count: number }) {
   return (
     <Box component="form" onSubmit={add}>
       <Typography variant="subtitle2" gutterBottom>
-        New tag
+        New Tag
       </Typography>
       <Box sx={rowSx}>
         <Box sx={lookSx}>
@@ -230,7 +219,7 @@ function ColorButton({
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   return (
     <>
-      <Tooltip title="Change color">
+      <Tooltip title="Change Color">
         <IconButton
           aria-label={label}
           aria-haspopup="dialog"

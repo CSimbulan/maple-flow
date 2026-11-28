@@ -113,7 +113,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
 
   return (
     <PageContainer>
-      <Typography color="text.secondary">Workspace settings</Typography>
+      <Typography color="text.secondary">Workspace Settings</Typography>
       <Box sx={{ mb: 3, ml: -0.75 }}>
         {org.viewerIsOwner ? (
           <EditableTitle
@@ -144,7 +144,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
           <TextField
             size="small"
             type="email"
-            label="Add by email"
+            label="Add by Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             error={!!addError}
@@ -171,7 +171,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
                 disableGutters
                 secondaryAction={
                   !isOwner && org.viewerIsOwner && !isMe ? (
-                    <Tooltip title="Remove from workspace">
+                    <Tooltip title="Remove from Workspace">
                       <IconButton
                         edge="end"
                         aria-label={`Remove ${m.email}`}
@@ -212,23 +212,23 @@ export function OrgSettings({ orgId }: { orgId: string }) {
       </Section>
 
       {org.viewerIsOwner ? (
-        <Section title="Delete workspace">
+        <Section title="Delete Workspace">
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Permanently deletes {org.name}, its {org.projects.length} project
             {org.projects.length === 1 ? "" : "s"} and {boardCount} board
             {boardCount === 1 ? "" : "s"}, for every member. It can&apos;t be undone.
           </Typography>
           <Button color="error" variant="outlined" onClick={() => setConfirm("delete")}>
-            Delete workspace…
+            Delete Workspace
           </Button>
         </Section>
       ) : (
-        <Section title="Leave workspace">
+        <Section title="Leave Workspace">
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             You&apos;ll lose access to its boards, except any you were invited to as a guest.
           </Typography>
           <Button color="error" variant="outlined" onClick={() => setConfirm("leave")}>
-            Leave workspace…
+            Leave Workspace
           </Button>
         </Section>
       )}
@@ -256,7 +256,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
       <ConfirmDelete
         open={confirm === "leave"}
         title={`Leave “${org.name}”?`}
-        confirmLabel="Leave workspace"
+        confirmLabel="Leave Workspace"
         busy={leaving}
         onClose={() => setConfirm(null)}
         onConfirm={async () => {
@@ -275,7 +275,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
       <ConfirmDelete
         open={removeOpen}
         title={`Remove ${toRemove?.label ?? ""} from “${org.name}”?`}
-        confirmLabel="Remove member"
+        confirmLabel="Remove Member"
         busy={removing}
         onClose={() => setRemoveOpen(false)}
         onConfirm={async () => {

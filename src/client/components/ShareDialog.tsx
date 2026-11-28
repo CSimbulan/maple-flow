@@ -52,14 +52,14 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm" fullScreen={isPhone}>
-      <DialogTitle>Share board</DialogTitle>
+      <DialogTitle>Share Board</DialogTitle>
       <DialogContent>
         <Stack component="form" onSubmit={add} direction="row" spacing={1} sx={{ pt: 1 }}>
           <TextField
             autoFocus
             size="small"
             type="email"
-            label="Invite a guest by email"
+            label="Invite Guest by Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             error={!!error}
@@ -82,7 +82,7 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
           <Alert severity="info" icon={false} sx={{ mt: 2 }}>
             Everyone in <strong>{org.name}</strong> can open this board.{" "}
             <Link href={`/w/${org.id}/settings`} style={{ color: "inherit" }}>
-              Manage members
+              Manage Members
             </Link>
           </Alert>
         )}
@@ -116,7 +116,7 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
         {orgMembers.length > 0 && (
           <>
             <Typography variant="subtitle2" sx={{ mt: 2 }}>
-              Workspace members ({orgMembers.length})
+              Workspace Members ({orgMembers.length})
             </Typography>
             <List dense>
               {orgMembers.map((m) => (

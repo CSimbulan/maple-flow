@@ -9,11 +9,6 @@ import Avatar from "@mui/material/Avatar";
 import AvatarGroup from "@mui/material/AvatarGroup";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -33,6 +28,7 @@ import { BAR_AVATAR_SX } from "./AppFrame";
 import { ArchiveDialog } from "./ArchiveDialog";
 import { userInitial } from "./CardItem";
 import { ColorSwatches } from "./ColorSwatches";
+import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { ShareDialog } from "./ShareDialog";
 import { TagsDialog } from "./TagsDialog";
@@ -190,7 +186,7 @@ export function BoardHeader({ board }: { board: Board }) {
           <ListItemIcon>
             <ArchiveOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          Archived items
+          Archived Items
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -201,7 +197,7 @@ export function BoardHeader({ board }: { board: Board }) {
           <ListItemIcon>
             <LocalOfferOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          Edit tags
+          Edit Tags
         </MenuItem>
         <Divider />
         <Box sx={{ px: 2, py: 1, maxWidth: 220 }}>
@@ -225,7 +221,7 @@ export function BoardHeader({ board }: { board: Board }) {
               setConfirmDelete(true);
             }}
           >
-            Delete board…
+            Delete Board
           </MenuItem>
         )}
       </Menu>
@@ -234,21 +230,16 @@ export function BoardHeader({ board }: { board: Board }) {
       {archivedOpen && <ArchiveDialog board={board} onClose={() => setArchivedOpen(false)} />}
       {tagsOpen && <TagsDialog board={board} onClose={() => setTagsOpen(false)} />}
 
-      <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
-        <DialogTitle>Delete “{board.title}”?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            This permanently deletes the board with all its lists and cards, for every member. It
-            can&apos;t be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={remove} disabled={deleting}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDelete
+        open={confirmDelete}
+        title={`Delete “${board.title}”?`}
+        busy={deleting}
+        onConfirm={remove}
+        onClose={() => setConfirmDelete(false)}
+      >
+        This permanently deletes the board with all its lists and cards, for every member. It
+        can&apos;t be undone.
+      </ConfirmDelete>
     </Stack>
   );
 }

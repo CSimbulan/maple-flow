@@ -69,16 +69,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <ListItemIcon>
                 <PeopleOutlineIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary="Members & settings" />
+              <ListItemText primary="Members & Settings" />
             </ListItemButton>
 
             <ListSubheader sx={{ display: "flex", alignItems: "center", mt: 1 }}>
               <Box sx={{ flexGrow: 1 }}>Projects</Box>
-              <Tooltip title="New project">
+              <Tooltip title="New Project">
                 <IconButton
                   size="small"
                   edge="end"
-                  aria-label="New project"
+                  aria-label="New Project"
                   onClick={() => setCreating(true)}
                 >
                   <AddIcon fontSize="small" />
@@ -117,8 +117,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       {creating && org && (
         <NameDialog
-          title="New project"
-          label="Project name"
+          title="New Project"
+          label="Project Name"
           onClose={() => setCreating(false)}
           onSubmit={async (name) => {
             try {

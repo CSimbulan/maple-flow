@@ -112,7 +112,7 @@ export function CardDialog({
         <DialogTitle sx={{ pb: 1 }}>
           {newInList && (
             <Typography variant="caption" color="text.secondary" component="p">
-              New card in “{newInList.title}”
+              New Card in “{newInList.title}”
             </Typography>
           )}
           <TextField
@@ -148,7 +148,7 @@ export function CardDialog({
                 </Stack>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  This board has no tags. Add some with Edit tags in the board menu.
+                  This board has no tags. Add some with Edit Tags in the board menu.
                 </Typography>
               )}
             </Box>
@@ -179,7 +179,7 @@ export function CardDialog({
                 ))}
               </TextField>
               <TextField
-                label="Due date"
+                label="Due Date"
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
@@ -240,6 +240,7 @@ export function CardDialog({
               <Button
                 startIcon={<DeleteOutlineIcon />}
                 color="error"
+                variant="contained"
                 onClick={() => setConfirmDelete(true)}
                 aria-label="Delete"
                 sx={actionSx}
@@ -260,7 +261,7 @@ export function CardDialog({
               disabled={saving || !title.trim()}
               sx={blueContainedSx}
             >
-              {card ? "Save" : "Add card"}
+              {card ? "Save" : "Add Card"}
             </Button>
           </Stack>
         </DialogActions>

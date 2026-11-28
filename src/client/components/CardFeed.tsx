@@ -104,10 +104,10 @@ export function CardFeed({ cardId }: { cardId: string }) {
   ].sort((a, b) => (newestFirst ? b.at.localeCompare(a.at) : a.at.localeCompare(b.at)));
 
   return (
-    <Box component="section" aria-label="Comments and activity">
+    <Box component="section" aria-label="Comments & Activity">
       <Stack direction="row" sx={{ alignItems: "center", flexWrap: "wrap", columnGap: 1, mb: 1 }}>
         <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
-          Comments and activity
+          Comments & Activity
         </Typography>
         <FormControlLabel
           control={
@@ -349,8 +349,7 @@ function CommentItem({ comment }: { comment: CommentFieldsFragment }) {
       </Box>
       <ConfirmDelete
         open={confirmDelete}
-        title="Delete comment?"
-        confirmLabel="Delete comment"
+        title="Delete Comment?"
         busy={deleting}
         onConfirm={remove}
         onClose={() => setConfirmDelete(false)}

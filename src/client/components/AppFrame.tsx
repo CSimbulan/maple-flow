@@ -131,7 +131,7 @@ export function AppFrame({
                 <Divider />
                 <form action={signOutAction}>
                   <MenuItem component="button" type="submit" sx={{ width: "100%" }}>
-                    Sign out
+                    Sign Out
                   </MenuItem>
                 </form>
               </Menu>

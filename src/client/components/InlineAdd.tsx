@@ -10,7 +10,7 @@ import Tooltip from "@mui/material/Tooltip";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { BRAND } from "@/brand";
 
-/** "+ Add a card" style composer. Stays open after adding so several items can be entered. */
+/** "+ Add List" style composer. Stays open after adding so several items can be entered. */
 export function InlineAdd({
   label,
   placeholder,

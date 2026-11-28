@@ -7,6 +7,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import TextField from "@mui/material/TextField";
+import { blueContainedSx, blueOutlinedSx } from "../buttons";
 import { useState, type FormEvent } from "react";
 
 /** Asks for one name, e.g. for a new organization or project. Closes when `onSubmit` succeeds. */
@@ -53,9 +54,16 @@ export function NameDialog({
             sx={{ mt: help ? 0 : 1 }}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained" disabled={busy || !name.trim()}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="outlined" onClick={onClose} sx={blueOutlinedSx}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            sx={blueContainedSx}
+            disabled={busy || !name.trim()}
+          >
             {submitLabel}
           </Button>
         </DialogActions>
