@@ -3,6 +3,7 @@ import {
   BoardModel,
   OrganizationModel,
   ProjectModel,
+  type MemberSince,
   type OrganizationDoc,
   type ProjectDoc,
 } from "./models";
@@ -18,7 +19,12 @@ export async function createOrganization(
 ): Promise<{ org: OrganizationDoc; project: ProjectDoc }> {
   const owner = new Types.ObjectId(ownerId.toString());
   const org = (
-    await OrganizationModel.create({ name, ownerId: owner, memberIds: [owner] })
+    await OrganizationModel.create({
+      name,
+      ownerId: owner,
+      memberIds: [owner],
+      memberSince: [{ userId: owner, joinedAt: new Date() }],
+    })
   ).toObject();
   const project = (
     await ProjectModel.create({ orgId: org._id, name: DEFAULT_PROJECT_NAME })
@@ -60,4 +66,35 @@ export async function ensureWorkspace(userId: string): Promise<OrganizationDoc[]
     );
   }
   return orgs;
+}
+
+/**
+ * When each member of `org` joined, in `memberIds` order. Members from before join dates were
+ * recorded get one now (a lazy migration, like ensureWorkspace): the owner the organization's
+ * creation date, everyone else the current time. `org` is updated in place.
+ */
+export async function joinDatesOf(org: OrganizationDoc): Promise<MemberSince[]> {
+  const known = new Map((org.memberSince ?? []).map((m) => [m.userId.toString(), m]));
+  const missing: MemberSince[] = org.memberIds
+    .filter((id) => !known.has(id.toString()))
+    .map((userId) => ({
+      userId,
+      joinedAt: userId.equals(org.ownerId) ? org.createdAt : new Date(),
+    }));
+  if (missing.length > 0) {
+    // One update per member, each only if they still have no date, so concurrent requests
+    // can't record someone twice. timestamps: false keeps the workspace's updatedAt.
+    await OrganizationModel.bulkWrite(
+      missing.map((m) => ({
+        updateOne: {
+          filter: { _id: org._id, "memberSince.userId": { $ne: m.userId } },
+          update: { $push: { memberSince: m } },
+          timestamps: false,
+        },
+      })),
+    );
+    for (const m of missing) known.set(m.userId.toString(), m);
+    org.memberSince = [...(org.memberSince ?? []), ...missing];
+  }
+  return org.memberIds.map((id) => known.get(id.toString())!);
 }

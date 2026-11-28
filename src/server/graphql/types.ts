@@ -4,6 +4,7 @@ import { boardAudienceIds, canManageBoard, isOrgMember, orgOfBoard } from "./per
 import type { Context } from "./context";
 import { defaultListColor } from "../../lib/list-colors";
 import { tagsOf } from "./tags";
+import { joinDatesOf } from "../db/workspace";
 
 /**
  * Lists from before list colors existed get the default color for their place on the board,
@@ -31,6 +32,7 @@ export function defineTypes({
   builder,
   UserRef,
   WorkspaceRef,
+  WorkspaceMemberRef,
   ProjectRef,
   CreateProjectPayloadRef,
   BoardRef,
@@ -65,11 +67,31 @@ export function defineTypes({
         type: [UserRef],
         resolve: (o, _args, ctx) => loadUsers(ctx, o.memberIds),
       }),
+      memberships: t.field({
+        type: [WorkspaceMemberRef],
+        description: "Members with when they joined, in the same order as `members`.",
+        resolve: async (o, _args, ctx) => {
+          const dates = await joinDatesOf(o);
+          const users = await ctx.loaders.userById.loadMany(dates.map((d) => d.userId.toString()));
+          return dates.flatMap((d, i) => {
+            const user = users[i];
+            return user && !(user instanceof Error) ? [{ user, joinedAt: d.joinedAt }] : [];
+          });
+        },
+      }),
       viewerIsOwner: t.boolean({ resolve: (o, _args, ctx) => o.ownerId.toString() === ctx.userId }),
       projects: t.field({
         type: [ProjectRef],
         resolve: (o, _args, ctx) => ctx.loaders.projectsByOrg.load(o._id.toString()),
       }),
+    }),
+  });
+
+  builder.objectType(WorkspaceMemberRef, {
+    description: "Someone in a workspace, and when they joined it.",
+    fields: (t) => ({
+      user: t.field({ type: UserRef, resolve: (m) => m.user }),
+      joinedAt: t.string({ resolve: (m) => m.joinedAt.toISOString() }),
     }),
   });
 

@@ -314,8 +314,17 @@ type User {
 type Workspace {
   id: ID!
   members: [User!]!
+
+  """Members with when they joined, in the same order as `members`."""
+  memberships: [WorkspaceMember!]!
   name: String!
   owner: User!
   projects: [Project!]!
   viewerIsOwner: Boolean!
+}
+
+"""Someone in a workspace, and when they joined it."""
+type WorkspaceMember {
+  joinedAt: String!
+  user: User!
 }

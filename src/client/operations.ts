@@ -486,6 +486,12 @@ export const WorkspaceQuery = graphql(`
       members {
         ...UserFields
       }
+      memberships {
+        joinedAt
+        user {
+          id
+        }
+      }
       projects {
         id
         name
@@ -554,6 +560,12 @@ export const AddWorkspaceMemberMutation = graphql(`
       members {
         ...UserFields
       }
+      memberships {
+        joinedAt
+        user {
+          id
+        }
+      }
     }
   }
 `);
@@ -564,6 +576,12 @@ export const RemoveWorkspaceMemberMutation = graphql(`
       id
       members {
         ...UserFields
+      }
+      memberships {
+        joinedAt
+        user {
+          id
+        }
       }
     }
   }

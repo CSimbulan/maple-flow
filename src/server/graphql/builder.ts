@@ -33,6 +33,7 @@ export function createBuilder() {
     // Stored as "organizations" in MongoDB (OrganizationDoc); called Workspace in the API.
     WorkspaceRef: builder.objectRef<OrganizationDoc>("Workspace"),
     ProjectRef: builder.objectRef<ProjectDoc>("Project"),
+    WorkspaceMemberRef: builder.objectRef<{ user: UserDoc; joinedAt: Date }>("WorkspaceMember"),
     CreateProjectPayloadRef: builder.objectRef<{
       project: ProjectDoc;
       workspace: OrganizationDoc;

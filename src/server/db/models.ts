@@ -17,6 +17,16 @@ export interface OrganizationDoc extends Timestamps {
   ownerId: Types.ObjectId;
   /** Everyone in the organization, owner included. They can open every board in its projects. */
   memberIds: Types.ObjectId[];
+  /**
+   * When each member joined. Missing (or missing someone) on organizations from before join
+   * dates were recorded, until it's next read (see joinDatesOf).
+   */
+  memberSince?: MemberSince[];
+}
+
+export interface MemberSince {
+  userId: Types.ObjectId;
+  joinedAt: Date;
 }
 
 export interface ProjectDoc extends Timestamps {
@@ -146,6 +156,18 @@ const organizationSchema = new Schema<OrganizationDoc>(
     name: { type: String, required: true, trim: true },
     ownerId: { type: ObjectId, ref: "User", required: true },
     memberIds: { type: [ObjectId], ref: "User", default: [], index: true },
+    memberSince: {
+      type: [
+        new Schema<MemberSince>(
+          {
+            userId: { type: ObjectId, ref: "User", required: true },
+            joinedAt: { type: Date, required: true },
+          },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
   },
   { timestamps: true },
 );

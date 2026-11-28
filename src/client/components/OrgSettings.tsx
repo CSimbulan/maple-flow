@@ -34,6 +34,8 @@ import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { NotFound, PageContainer } from "./OrgPages";
 import { PageLoading } from "./PageLoading";
+import { MemberBadges } from "./MemberBadges";
+import { formatJoinDate } from "@/lib/membership";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -90,6 +92,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
   if (!org) return <NotFound what="workspace" />;
   const myId = me?.me?.id;
   const boardCount = org.projects.reduce((n, p) => n + p.boards.length, 0);
+  const joinedAt = new Map(org.memberships.map((m) => [m.user.id, new Date(m.joinedAt)]));
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -157,6 +160,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
           {org.members.map((m) => {
             const isOwner = m.id === org.owner.id;
             const isMe = m.id === myId;
+            const joined = joinedAt.get(m.id);
             return (
               <ListItem
                 key={m.id}
@@ -190,11 +194,12 @@ export function OrgSettings({ orgId }: { orgId: string }) {
                       sx={{ alignItems: "center" }}
                     >
                       <span>{m.name ?? m.email}</span>
+                      {joined && <MemberBadges joinedAt={joined} />}
                       {isOwner && <Chip size="small" label="Owner" />}
                       {isMe && <Chip size="small" variant="outlined" label="You" />}
                     </Stack>
                   }
-                  secondary={m.email}
+                  secondary={joined ? `${m.email} · Joined ${formatJoinDate(joined)}` : m.email}
                   slotProps={{ secondary: { noWrap: true } }}
                 />
               </ListItem>

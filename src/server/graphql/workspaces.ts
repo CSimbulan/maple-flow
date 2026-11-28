@@ -136,7 +136,16 @@ export function defineWorkspaceSchema({
         if (isOrgMember(org, user._id.toString())) {
           throw badInput(`${input.email} is already in this workspace`);
         }
-        await OrganizationModel.updateOne({ _id: org._id }, { $addToSet: { memberIds: user._id } });
+        // Only if they aren't in yet, so a double submit can't record them twice.
+        await OrganizationModel.updateOne(
+          { _id: org._id, memberIds: { $ne: user._id } },
+          {
+            $push: {
+              memberIds: user._id,
+              memberSince: { userId: user._id, joinedAt: new Date() },
+            },
+          },
+        );
         return reloadOrg(ctx, org._id);
       },
     }),
@@ -157,7 +166,10 @@ export function defineWorkspaceSchema({
           throw forbidden("Only the workspace owner can remove other members");
         }
         if (!isOrgMember(org, args.userId)) throw notFound("Member");
-        await OrganizationModel.updateOne({ _id: org._id }, { $pull: { memberIds: target } });
+        await OrganizationModel.updateOne(
+          { _id: org._id },
+          { $pull: { memberIds: target, memberSince: { userId: target } } },
+        );
 
         // Unassign them from cards on boards they can no longer open.
         const projectIds = (await ProjectModel.find({ orgId: org._id }).lean<ProjectDoc[]>()).map(

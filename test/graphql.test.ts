@@ -9,6 +9,7 @@ import {
   CardModel,
   CommentModel,
   ListModel,
+  OrganizationModel,
   UserModel,
 } from "../src/server/db/models";
 import { ensureWorkspace } from "../src/server/db/workspace";
@@ -1281,5 +1282,59 @@ describe("sorting a list", () => {
     });
     expect(await sortedTitles(todo, "TITLE")).toEqual(["a", "b"]);
     expect(await errorCode(run(bob, SORT, { id: todo, by: "TITLE" }))).toBe("NOT_FOUND");
+  });
+});
+
+describe("workspace join dates", () => {
+  const MEMBERS = `query ($id: ID!) {
+    workspace(id: $id) { memberships { joinedAt user { name } } }
+  }`;
+  const ADD = `mutation ($o: ID!, $e: String!) {
+    addWorkspaceMember(workspaceId: $o, email: $e) { id }
+  }`;
+  const memberships = async (orgId: string, userId = ann) =>
+    (await run(userId, MEMBERS, { id: orgId })).workspace.memberships as {
+      joinedAt: string;
+      user: { name: string };
+    }[];
+
+  it("records when people join, and forgets it when they leave", async () => {
+    const org = await orgOf(ann);
+    const before = Date.now();
+    await run(ann, ADD, { o: org, e: "bob@example.com" });
+    const [owner, member] = await memberships(org);
+    expect(owner.user.name).toBe("Ann");
+    expect(member.user.name).toBe("Bob");
+    expect(Date.parse(member.joinedAt)).toBeGreaterThanOrEqual(before - 1000);
+    expect(Date.parse(owner.joinedAt)).toBeLessThanOrEqual(Date.parse(member.joinedAt));
+
+    await run(
+      ann,
+      `mutation ($o: ID!, $u: ID!) { removeWorkspaceMember(workspaceId: $o, userId: $u) { id } }`,
+      {
+        o: org,
+        u: bob,
+      },
+    );
+    const doc = (await OrganizationModel.findById(org).lean())!;
+    expect(doc.memberSince!.map((m) => m.userId.toString())).toEqual([ann]);
+  });
+
+  it("backfills workspaces from before join dates: the owner's creation date, others now", async () => {
+    const org = await orgOf(ann);
+    await run(ann, ADD, { o: org, e: "bob@example.com" });
+    const created = new Date("2025-03-01T12:00:00Z");
+    await OrganizationModel.collection.updateOne(
+      { _id: new mongoose.Types.ObjectId(org) },
+      { $unset: { memberSince: "" }, $set: { createdAt: created } },
+    );
+    const before = Date.now();
+    const [owner, member] = await memberships(org);
+    expect(owner.joinedAt).toBe(created.toISOString());
+    expect(Date.parse(member.joinedAt)).toBeGreaterThanOrEqual(before - 1000);
+    // Saved, so it doesn't change on the next read.
+    expect(await memberships(org)).toEqual([owner, member]);
+    const doc = (await OrganizationModel.findById(org).lean())!;
+    expect(doc.memberSince).toHaveLength(2);
   });
 });
