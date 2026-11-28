@@ -1,5 +1,6 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
 import { PRIORITIES, type Priority } from "../../lib/priority";
+import { START_PAGES, type StartPage } from "../../lib/start-page";
 
 // Explicit interfaces: Mongoose's InferSchemaType is slow enough to exhaust tsc's memory here.
 type Timestamps = { createdAt: Date; updatedAt: Date };
@@ -9,6 +10,8 @@ export interface UserDoc extends Timestamps {
   email: string;
   name: string | null;
   image: string | null;
+  /** Where they land after signing in. Missing until they choose: DEFAULT_START_PAGE. */
+  startPage?: StartPage;
 }
 
 export interface OrganizationDoc extends Timestamps {
@@ -147,6 +150,7 @@ const userSchema = new Schema<UserDoc>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     name: { type: String, default: null },
     image: { type: String, default: null },
+    startPage: { type: String, enum: START_PAGES },
   },
   { timestamps: true },
 );
@@ -259,11 +263,13 @@ const activitySchema = new Schema<ActivityDoc>(
 activitySchema.index({ cardId: 1, createdAt: 1 });
 
 function model<T>(name: string, schema: Schema<T>): Model<T> {
-  // Next.js dev reloads re-run this file, so a model can already exist. Replace it rather than
-  // reuse it: a reused model keeps its old schema, and Mongoose silently drops fields it doesn't
-  // know when saving (new list colors were never stored until the server restarted).
-  if (mongoose.models[name]) mongoose.deleteModel(name);
-  return mongoose.model<T>(name, schema);
+  // This file runs more than once in one server: Next.js dev reloads it, and the page code and the
+  // API code each load their own copy. So a model can already exist. Replace it rather than reuse
+  // it (a reused model keeps its old schema, and Mongoose silently drops fields it doesn't know
+  // when saving). Overwrite instead of deleteModel(): deleteModel also drops the model's collection
+  // from the connection, so a copy still held by other code is never told when the connection
+  // reopens and buffers every query until it times out (seen after Atlas reconnects).
+  return mongoose.model<T>(name, schema, undefined, { overwriteModels: true });
 }
 
 export const UserModel = model("User", userSchema);
