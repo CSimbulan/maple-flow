@@ -17,9 +17,12 @@ export const theme = createTheme({
   },
   components: {
     MuiButton: { defaultProps: { disableElevation: true } },
-    // Initials avatars (no photo) use the brand orange instead of gray.
+    // Initials avatars (no photo) use the brand orange instead of gray, with a bold letter, like
+    // UserAvatar. This also styles AvatarGroup's "+N" avatar.
     MuiAvatar: {
-      styleOverrides: { colorDefault: { backgroundColor: BRAND.orange, color: "#fff" } },
+      styleOverrides: {
+        colorDefault: { backgroundColor: BRAND.orange, color: "#fff", fontWeight: 700 },
+      },
     },
   },
 });

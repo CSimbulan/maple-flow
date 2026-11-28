@@ -4,7 +4,6 @@ import { useMutation } from "@apollo/client/react";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import Autocomplete from "@mui/material/Autocomplete";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -24,7 +23,7 @@ import { ArchiveCardMutation, CreateCardMutation, UpdateCardMutation } from "../
 import { useDeleteCard } from "../deletes";
 import { useIsPhone } from "../useIsPhone";
 import { CardFeed } from "./CardFeed";
-import { userInitial } from "./CardItem";
+import { UserAvatar } from "./UserAvatar";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { PriorityIcon } from "./PriorityIcon";
 import { TagToggle } from "./TagChip";
@@ -197,12 +196,7 @@ export function CardDialog({
               isOptionEqualToValue={(a, b) => a.id === b.id}
               renderOption={({ key, ...props }, m) => (
                 <li key={key} {...props}>
-                  <Avatar
-                    src={m.image ?? undefined}
-                    sx={{ width: 24, height: 24, mr: 1, fontSize: 12 }}
-                  >
-                    {userInitial(m)}
-                  </Avatar>
+                  <UserAvatar user={m} size={24} alt="" sx={{ mr: 1 }} />
                   {m.name ?? m.email}
                 </li>
               )}

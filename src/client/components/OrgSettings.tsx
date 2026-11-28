@@ -3,7 +3,6 @@
 import { useMutation, useQuery } from "@apollo/client/react";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import Alert from "@mui/material/Alert";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -31,7 +30,7 @@ import {
   RemoveWorkspaceMemberMutation,
   RenameWorkspaceMutation,
 } from "../operations";
-import { userInitial } from "./CardItem";
+import { UserAvatar } from "./UserAvatar";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { NotFound, PageContainer } from "./OrgPages";
@@ -187,7 +186,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
                 }
               >
                 <ListItemAvatar>
-                  <Avatar src={m.image ?? undefined}>{userInitial(m)}</Avatar>
+                  <UserAvatar user={m} size={40} alt="" />
                 </ListItemAvatar>
                 <ListItemText
                   primary={

@@ -3,7 +3,6 @@
 import { ApolloProvider } from "@apollo/client/react";
 import MenuIcon from "@mui/icons-material/Menu";
 import AppBar from "@mui/material/AppBar";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
@@ -20,6 +19,7 @@ import { getApolloClient } from "../apollo/client";
 import { CurrentOrgContext, rememberOrg } from "../current-org";
 import { OrgSwitcher } from "./OrgSwitcher";
 import { Sidebar } from "./Sidebar";
+import { UserAvatar } from "./UserAvatar";
 
 export type FrameUser = {
   id: string;
@@ -30,15 +30,8 @@ export type FrameUser = {
 
 const SIDEBAR_WIDTH = 248;
 
-/** People's avatars on the colored bars: white circle, bold red initial (no photo). */
-export const BAR_AVATAR_SX = {
-  width: 30,
-  height: 30,
-  fontSize: 14,
-  bgcolor: "#fff",
-  color: BRAND.red,
-  fontWeight: 700,
-} as const;
+/** Avatar size on the colored bars (top bar and board header). */
+export const BAR_AVATAR_SIZE = 30;
 
 /**
  * Top bar (menu button, app name, organization switcher, account menu) and the projects sidebar.
@@ -72,7 +65,6 @@ export function AppFrame({
   }, [orgId]);
 
   const docked = sidebar === "docked";
-  const initial = (user.name ?? user.email ?? "?").slice(0, 1).toUpperCase();
 
   return (
     <ApolloProvider client={apollo}>
@@ -114,9 +106,11 @@ export function AppFrame({
                 onClick={(e) => setAccountAnchor(e.currentTarget)}
                 sx={{ p: 0.5 }}
               >
-                <Avatar src={user.image ?? undefined} sx={BAR_AVATAR_SX}>
-                  {initial}
-                </Avatar>
+                <UserAvatar
+                  user={{ name: user.name, email: user.email ?? "?", image: user.image }}
+                  size={BAR_AVATAR_SIZE}
+                  onBar
+                />
               </IconButton>
               <Menu
                 anchorEl={accountAnchor}

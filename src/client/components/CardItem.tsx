@@ -5,7 +5,6 @@ import { CSS } from "@dnd-kit/utilities";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ScheduleIcon from "@mui/icons-material/Schedule";
-import Avatar from "@mui/material/Avatar";
 import AvatarGroup from "@mui/material/AvatarGroup";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -19,6 +18,7 @@ import { useCardCollapsed } from "../collapsed-cards";
 import { DragHandle } from "./DragHandle";
 import { PriorityIcon } from "./PriorityIcon";
 import { TagChip } from "./TagChip";
+import { UserAvatar } from "./UserAvatar";
 
 export function formatDue(iso: string) {
   // Due dates are stored as UTC midnight; show the calendar date regardless of local time zone.
@@ -27,10 +27,6 @@ export function formatDue(iso: string) {
     day: "numeric",
     timeZone: "UTC",
   });
-}
-
-export function userInitial(u: { name: string | null; email: string }) {
-  return (u.name ?? u.email).slice(0, 1).toUpperCase();
 }
 
 /** Stops events on a control inside a card from opening the card or starting a drag. */
@@ -211,12 +207,11 @@ export function CardFace({
             <AvatarGroup
               max={5}
               // AvatarGroup lays out right to left, so by default the avatars sit on the right.
-              sx={{ "& .MuiAvatar-root": { width: 24, height: 24, fontSize: 12 } }}
+              // The "+N" avatar matches the others.
+              sx={{ "& .MuiAvatar-root": { width: 24, height: 24, fontSize: 11, fontWeight: 700 } }}
             >
               {card.assignees.map((u) => (
-                <Avatar key={u.id} src={u.image ?? undefined} alt={u.name ?? u.email}>
-                  {userInitial(u)}
-                </Avatar>
+                <UserAvatar key={u.id} user={u} size={24} />
               ))}
             </AvatarGroup>
           )}

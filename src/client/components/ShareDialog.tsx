@@ -3,7 +3,6 @@
 import { useMutation } from "@apollo/client/react";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import Alert from "@mui/material/Alert";
-import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -23,7 +22,7 @@ import type { Board } from "../board-moves";
 import { errorMessage, useNotify } from "../notify";
 import { AddBoardMemberMutation, RemoveBoardMemberMutation } from "../operations";
 import { useIsPhone } from "../useIsPhone";
-import { userInitial } from "./CardItem";
+import { UserAvatar } from "./UserAvatar";
 import { blueOutlinedSx } from "../buttons";
 
 export function ShareDialog({ board, onClose }: { board: Board; onClose: () => void }) {
@@ -150,7 +149,7 @@ function PersonRow({ person, onRemove }: { person: Person; onRemove?: () => void
       }
     >
       <ListItemAvatar>
-        <Avatar src={person.image ?? undefined}>{userInitial(person)}</Avatar>
+        <UserAvatar user={person} size={40} alt="" />
       </ListItemAvatar>
       <ListItemText
         primary={person.name ?? person.email}

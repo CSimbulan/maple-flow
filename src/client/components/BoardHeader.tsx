@@ -5,7 +5,6 @@ import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import Avatar from "@mui/material/Avatar";
 import AvatarGroup from "@mui/material/AvatarGroup";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -24,9 +23,9 @@ import type { Board } from "../board-moves";
 import { BOARD_BACKGROUNDS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { DeleteBoardMutation, UpdateBoardMutation } from "../operations";
-import { BAR_AVATAR_SX } from "./AppFrame";
+import { BAR_AVATAR_SIZE } from "./AppFrame";
 import { ArchiveDialog } from "./ArchiveDialog";
-import { userInitial } from "./CardItem";
+import { UserAvatar } from "./UserAvatar";
 import { ColorSwatches } from "./ColorSwatches";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
@@ -131,16 +130,20 @@ export function BoardHeader({ board }: { board: Board }) {
         max={5}
         sx={{
           display: { xs: "none", sm: "flex" },
-          // Same look as the account avatar in the top bar. The ring matches the board color so
-          // overlapping white avatars stay apart.
-          "& .MuiAvatar-root": { ...BAR_AVATAR_SX, borderColor: board.background },
+          // Same look as the account avatar in the top bar, "+N" included: white rings keep
+          // the overlapping orange circles apart and visible on the board color.
+          "& .MuiAvatar-root": {
+            width: BAR_AVATAR_SIZE,
+            height: BAR_AVATAR_SIZE,
+            fontSize: 14,
+            fontWeight: 700,
+            borderColor: "#fff",
+          },
         }}
       >
         {board.members.map((m) => (
           <Tooltip key={m.id} title={m.name ?? m.email}>
-            <Avatar src={m.image ?? undefined} alt={m.name ?? m.email}>
-              {userInitial(m)}
-            </Avatar>
+            <UserAvatar user={m} size={BAR_AVATAR_SIZE} onBar />
           </Tooltip>
         ))}
       </AvatarGroup>

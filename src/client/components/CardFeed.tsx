@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery } from "@apollo/client/react";
 import SwapVertIcon from "@mui/icons-material/SwapVert";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -24,7 +23,7 @@ import {
   DeleteCommentMutation,
   UpdateCommentMutation,
 } from "../operations";
-import { userInitial } from "./CardItem";
+import { UserAvatar } from "./UserAvatar";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { PriorityIcon } from "./PriorityIcon";
 import { TagChip } from "./TagChip";
@@ -215,13 +214,8 @@ export function CardFeed({ cardId }: { cardId: string }) {
 
 function PersonAvatar({ person, size }: { person: Person; size: number }) {
   return (
-    <Avatar
-      src={person?.image ?? undefined}
-      alt=""
-      sx={{ width: size, height: size, fontSize: size / 2, mt: 0.25 }}
-    >
-      {person ? userInitial(person) : "?"}
-    </Avatar>
+    // The name is written next to it, so the photo needs no description.
+    <UserAvatar user={person} size={size} alt="" sx={{ mt: 0.25 }} />
   );
 }
 
