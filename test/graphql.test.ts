@@ -1338,3 +1338,51 @@ describe("workspace join dates", () => {
     expect(doc.memberSince).toHaveLength(2);
   });
 });
+
+describe("moving all cards", () => {
+  const MOVE_ALL = `mutation ($from: ID!, $to: ID!) {
+    moveAllCards(fromListId: $from, toListId: $to) {
+      moved fromList { cards { title } } toList { cards { title } }
+    }
+  }`;
+
+  it("moves a list's active cards to the bottom of another, in order, logging each move", async () => {
+    const board = await newBoard();
+    const [todo, doing] = board.lists;
+    await addCards(ann, todo.id, ["A", "B", "C"]);
+    await addCards(ann, doing.id, ["D"]);
+    await run(ann, `mutation ($id: ID!) { archiveCard(id: $id) { id } }`, {
+      id: await cardId(board.id, "C"),
+    });
+
+    const { moveAllCards } = await run(ann, MOVE_ALL, { from: todo.id, to: doing.id });
+    expect(moveAllCards.moved).toBe(2);
+    expect(moveAllCards.fromList.cards).toEqual([]);
+    expect(moveAllCards.toList.cards.map((c: { title: string }) => c.title)).toEqual([
+      "D",
+      "A",
+      "B",
+    ]);
+    // The archived card stays with its list.
+    expect((await CardModel.findOne({ title: "C" }).lean())!.listId.toString()).toBe(todo.id);
+
+    const FEED = `query ($id: ID!) { card(id: $id) { activity { kind from to } } }`;
+    const activity = (await run(ann, FEED, { id: await cardId(board.id, "A") })).card.activity;
+    expect(activity.at(-1)).toEqual({ kind: "MOVED", from: "To do", to: "Doing" });
+  });
+
+  it("rejects the same list, lists on other boards, and people who can't open the board", async () => {
+    const board = await newBoard();
+    const other = await newBoard();
+    const [todo] = board.lists;
+    expect(await errorCode(run(ann, MOVE_ALL, { from: todo.id, to: todo.id }))).toBe(
+      "BAD_USER_INPUT",
+    );
+    expect(await errorCode(run(ann, MOVE_ALL, { from: todo.id, to: other.lists[0].id }))).toBe(
+      "BAD_USER_INPUT",
+    );
+    expect(await errorCode(run(bob, MOVE_ALL, { from: todo.id, to: board.lists[1].id }))).toBe(
+      "NOT_FOUND",
+    );
+  });
+});

@@ -41,6 +41,7 @@ export function defineTypes({
   TagRef,
   PriorityEnum,
   MoveCardPayloadRef,
+  MoveCardsPayloadRef,
   RestoreCardPayloadRef,
   RestoreListPayloadRef,
   DeleteCardPayloadRef,
@@ -249,6 +250,14 @@ export function defineTypes({
       id: t.id({ resolve: (tag) => tag._id.toString() }),
       name: t.exposeString("name"),
       color: t.exposeString("color", { description: "Hex color; tags show white text on it." }),
+    }),
+  });
+
+  builder.objectType(MoveCardsPayloadRef, {
+    fields: (t) => ({
+      fromList: t.field({ type: ListRef, resolve: (p) => p.fromList }),
+      toList: t.field({ type: ListRef, resolve: (p) => p.toList }),
+      moved: t.int({ description: "How many cards moved.", resolve: (p) => p.moved }),
     }),
   });
 

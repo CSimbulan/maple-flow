@@ -247,6 +247,26 @@ export const SortListMutation = graphql(`
   }
 `);
 
+export const MoveAllCardsMutation = graphql(`
+  mutation MoveAllCards($fromListId: ID!, $toListId: ID!) {
+    moveAllCards(fromListId: $fromListId, toListId: $toListId) {
+      moved
+      fromList {
+        id
+        cards {
+          ...CardFields
+        }
+      }
+      toList {
+        id
+        cards {
+          ...CardFields
+        }
+      }
+    }
+  }
+`);
+
 export const ArchiveListMutation = graphql(`
   mutation ArchiveList($id: ID!) {
     archiveList(id: $id) {

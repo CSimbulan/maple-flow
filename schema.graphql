@@ -164,6 +164,14 @@ type MoveCardPayload {
   toList: List!
 }
 
+type MoveCardsPayload {
+  fromList: List!
+
+  """How many cards moved."""
+  moved: Int!
+  toList: List!
+}
+
 type Mutation {
   addBoardMember(boardId: ID!, email: String!): Board!
 
@@ -219,6 +227,11 @@ type Mutation {
   Permanently delete a workspace with all its projects, boards and cards.
   """
   deleteWorkspace(id: ID!): ID!
+
+  """
+  Move every active card in a list to the bottom of another list on the same board, keeping their order. Each card's activity records the move.
+  """
+  moveAllCards(fromListId: ID!, toListId: ID!): MoveCardsPayload!
   moveCard(afterId: ID, beforeId: ID, id: ID!, toListId: ID!): MoveCardPayload!
   moveList(afterId: ID, beforeId: ID, id: ID!): Board!
   removeBoardMember(boardId: ID!, userId: ID!): Board!

@@ -22,6 +22,7 @@ import { useDeleteList } from "../deletes";
 import { errorMessage, useNotify } from "../notify";
 import {
   ArchiveListMutation,
+  MoveAllCardsMutation,
   RenameListMutation,
   SortListMutation,
   UpdateListColorMutation,
@@ -64,10 +65,13 @@ export function ListColumn({
   cardIds,
   cardsById,
   accent,
+  otherLists,
   onOpenCard,
   onAddCard,
 }: {
   list: BoardList;
+  /** The board's other lists, in board order, for Move All Cards. */
+  otherLists: { id: string; title: string; color: string }[];
   cardIds: string[];
   cardsById: Map<string, BoardCard>;
   /** The board's color, for the line under each card's title. */
@@ -100,6 +104,18 @@ export function ListColumn({
   const [sortList] = useMutation(SortListMutation);
   // The sort options open in a second menu, at the same spot as the list menu.
   const [sortAnchor, setSortAnchor] = useState<HTMLElement | null>(null);
+  // Same for the lists Move All Cards can send the cards to.
+  const [moveAnchor, setMoveAnchor] = useState<HTMLElement | null>(null);
+  const [moveAllCards] = useMutation(MoveAllCardsMutation);
+  const moveAllTo = (target: { id: string; title: string }) => {
+    setMoveAnchor(null);
+    run(
+      moveAllCards({ variables: { fromListId: list.id, toListId: target.id } }).then(({ data }) => {
+        const n = data?.moveAllCards.moved ?? 0;
+        notify(`Moved ${n} ${n === 1 ? "card" : "cards"} to “${target.title}”`, "success");
+      }),
+    );
+  };
   // Only cards with details can collapse; the two items act on those.
   const collapsedCards = useCollapsedCards();
   const collapsibleIds = list.cards.filter(cardHasDetails).map((c) => c.id);
@@ -182,6 +198,16 @@ export function ListColumn({
           <ChevronRightIcon fontSize="small" sx={{ ml: 2, color: "text.secondary" }} />
         </MenuItem>
         <MenuItem
+          disabled={list.cards.length === 0 || otherLists.length === 0}
+          onClick={() => {
+            setMoveAnchor(menuAnchor);
+            setMenuAnchor(null);
+          }}
+        >
+          <ListItemText>Move All Cards</ListItemText>
+          <ChevronRightIcon fontSize="small" sx={{ ml: 2, color: "text.secondary" }} />
+        </MenuItem>
+        <MenuItem
           disabled={!collapsedCards || collapsedCount === collapsibleIds.length}
           onClick={() => collapseAll(true)}
         >
@@ -254,6 +280,34 @@ export function ListColumn({
         {CARD_SORTS.map((by) => (
           <MenuItem key={by} onClick={() => sortBy(by)}>
             {CARD_SORT_LABELS[by]}
+          </MenuItem>
+        ))}
+      </Menu>
+      <Menu
+        anchorEl={moveAnchor}
+        open={!!moveAnchor}
+        onClose={() => setMoveAnchor(null)}
+        slotProps={{ list: { "aria-label": `Move all cards in ${list.title} to` } }}
+      >
+        <Typography variant="caption" color="text.secondary" component="li" sx={{ px: 2, pb: 0.5 }}>
+          Move All Cards to
+        </Typography>
+        {otherLists.map((target) => (
+          <MenuItem key={target.id} onClick={() => moveAllTo(target)}>
+            {/* The list's header color, to help tell lists apart. */}
+            <Box
+              aria-hidden
+              sx={{
+                width: 12,
+                height: 12,
+                borderRadius: "3px",
+                border: "1px solid rgba(0, 0, 0, 0.25)",
+                bgcolor: target.color,
+                mr: 1.5,
+                flexShrink: 0,
+              }}
+            />
+            {target.title}
           </MenuItem>
         ))}
       </Menu>

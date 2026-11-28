@@ -2,7 +2,7 @@ import { lexicographicSortSchema } from "graphql";
 import type { Model, Types } from "mongoose";
 import { z } from "zod";
 import { defaultListColor } from "../../lib/list-colors";
-import { initialPositions, insertIndex, planInsert } from "../../lib/position";
+import { initialPositions, insertIndex, planInsert, positionsAfter } from "../../lib/position";
 import { sortCards, type SortableCard } from "../../lib/card-sort";
 import { PRIORITIES } from "../../lib/priority";
 import { DEFAULT_TAGS } from "../../lib/tags";
@@ -182,6 +182,7 @@ export function buildSchema() {
     ListRef,
     CardRef,
     MoveCardPayloadRef,
+    MoveCardsPayloadRef,
     RestoreCardPayloadRef,
     RestoreListPayloadRef,
     DeleteCardPayloadRef,
@@ -622,6 +623,49 @@ export function buildSchema() {
             ]);
           }
           return { card: moved, fromList, toList };
+        },
+      }),
+      moveAllCards: t.field({
+        type: MoveCardsPayloadRef,
+        description:
+          "Move every active card in a list to the bottom of another list on the same board, " +
+          "keeping their order. Each card's activity records the move.",
+        args: {
+          fromListId: t.arg.id({ required: true }),
+          toListId: t.arg.id({ required: true }),
+        },
+        resolve: async (_root, args, ctx) => {
+          const fromList = await requireList(ctx, args.fromListId);
+          const toList = await requireList(ctx, args.toListId);
+          if (!toList.boardId.equals(fromList.boardId))
+            throw badInput("Cards can't move between boards");
+          if (toList._id.equals(fromList._id)) throw badInput("Choose a different list");
+          const cards = await CardModel.find({ listId: fromList._id, archived: false })
+            .sort({ position: 1 })
+            .lean<CardDoc[]>();
+          if (cards.length > 0) {
+            const last = await CardModel.findOne({ listId: toList._id, archived: false })
+              .sort({ position: -1 })
+              .select({ position: 1 })
+              .lean<{ position: string }>();
+            const positions = positionsAfter(last?.position ?? null, cards.length);
+            await CardModel.bulkWrite(
+              cards.map((c, i) => ({
+                updateOne: {
+                  filter: { _id: c._id },
+                  update: { $set: { listId: toList._id, position: positions[i] } },
+                },
+              })),
+            );
+            for (const card of cards) {
+              await logActivity(ctx, card, [
+                { kind: "MOVED", from: fromList.title, to: toList.title },
+              ]);
+            }
+          }
+          ctx.loaders.cardsByList.clear(fromList._id.toString());
+          ctx.loaders.cardsByList.clear(toList._id.toString());
+          return { fromList, toList, moved: cards.length };
         },
       }),
       archiveCard: t.field({

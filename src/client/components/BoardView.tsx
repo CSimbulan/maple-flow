@@ -293,6 +293,7 @@ function BoardCanvas({ board }: { board: Board }) {
                   cardIds={columns.cards[id] ?? []}
                   cardsById={cardsById}
                   accent={board.background}
+                  otherLists={board.lists.filter((l) => l.id !== list.id)}
                   onOpenCard={setOpenCardId}
                   onAddCard={() => setNewCardList({ id: list.id, title: list.title })}
                 />

@@ -57,6 +57,9 @@ export function createBuilder() {
       description: "What happened to a card in a CardActivity entry.",
       values: ACTIVITY_KINDS,
     }),
+    MoveCardsPayloadRef: builder.objectRef<{ fromList: ListDoc; toList: ListDoc; moved: number }>(
+      "MoveCardsPayload",
+    ),
     MoveCardPayloadRef: builder.objectRef<{
       card: CardDoc;
       fromList: ListDoc;

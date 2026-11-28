@@ -54,3 +54,8 @@ export function sortByPosition<T extends { position: string }>(items: readonly T
 export function initialPositions(n: number): string[] {
   return generateNKeysBetween(null, null, n);
 }
+
+/** `n` increasing positions after `last` (or for an empty group), e.g. to append several items. */
+export function positionsAfter(last: string | null, n: number): string[] {
+  return generateNKeysBetween(last, null, n);
+}
