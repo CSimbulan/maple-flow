@@ -37,6 +37,7 @@ const board: Board = {
   id: "b1",
   title: "Board",
   background: "#000000",
+  createdAt: "2026-01-01T00:00:00.000Z",
   viewerCanManage: true,
   project: null,
   guests: [],

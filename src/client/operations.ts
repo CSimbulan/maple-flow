@@ -62,6 +62,7 @@ export const BoardDetailQuery = graphql(`
       id
       title
       background
+      createdAt
       viewerCanManage
       project {
         id
@@ -480,6 +481,7 @@ export const WorkspaceQuery = graphql(`
   query Workspace($id: ID!) {
     workspace(id: $id) {
       ...WorkspaceSummaryFields
+      createdAt
       owner {
         ...UserFields
       }
@@ -508,6 +510,7 @@ export const ProjectQuery = graphql(`
     project(id: $id) {
       id
       name
+      createdAt
       workspace {
         ...WorkspaceSummaryFields
       }

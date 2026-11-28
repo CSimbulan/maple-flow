@@ -80,6 +80,7 @@ export function defineTypes({
         },
       }),
       viewerIsOwner: t.boolean({ resolve: (o, _args, ctx) => o.ownerId.toString() === ctx.userId }),
+      createdAt: t.string({ resolve: (o) => o.createdAt.toISOString() }),
       projects: t.field({
         type: [ProjectRef],
         resolve: (o, _args, ctx) => ctx.loaders.projectsByOrg.load(o._id.toString()),
@@ -99,6 +100,7 @@ export function defineTypes({
     fields: (t) => ({
       id: t.id({ resolve: (p) => p._id.toString() }),
       name: t.exposeString("name"),
+      createdAt: t.string({ resolve: (p) => p.createdAt.toISOString() }),
       workspace: t.field({
         type: WorkspaceRef,
         resolve: async (p, _args, ctx) => (await ctx.loaders.orgById.load(p.orgId.toString()))!,
@@ -159,6 +161,7 @@ export function defineTypes({
           withColors(await ctx.loaders.listsByBoard.load(b._id.toString())),
       }),
       updatedAt: t.string({ resolve: (b) => b.updatedAt.toISOString() }),
+      createdAt: t.string({ resolve: (b) => b.createdAt.toISOString() }),
       tags: t.field({
         type: [TagRef],
         description: "Tags that cards on this board can carry, in the order they were added.",

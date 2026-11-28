@@ -25,6 +25,7 @@ type Board {
   """Archived lists on this board, most recently archived first."""
   archivedLists: [List!]!
   background: String!
+  createdAt: String!
 
   """People added to this board directly who aren't in its workspace."""
   guests: [User!]!
@@ -265,6 +266,7 @@ enum Priority {
 type Project {
   """The project's boards, most recently updated first."""
   boards: [Board!]!
+  createdAt: String!
   id: ID!
   name: String!
   workspace: Workspace!
@@ -312,6 +314,7 @@ type User {
 }
 
 type Workspace {
+  createdAt: String!
   id: ID!
   members: [User!]!
 

@@ -32,6 +32,7 @@ import { ConfirmDelete } from "./ConfirmDelete";
 import { EditableTitle } from "./EditableTitle";
 import { NameDialog } from "./NameDialog";
 import { PageLoading } from "./PageLoading";
+import { formatDate } from "@/lib/format-date";
 
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
@@ -84,7 +85,7 @@ export function OrgOverview({ orgId }: { orgId: string }) {
         {org.name}
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        {plural(org.members.length, "member")} ·{" "}
+        {plural(org.members.length, "member")} · Created {formatDate(org.createdAt)} ·{" "}
         <Link href={`/w/${org.id}/settings`} style={{ color: "inherit" }}>
           Members & Settings
         </Link>
@@ -188,7 +189,7 @@ export function ProjectPage({ projectId }: { projectId: string }) {
         </Typography>
         <Typography color="text.secondary">Project</Typography>
       </Breadcrumbs>
-      <Stack direction="row" sx={{ alignItems: "center", mb: 3, gap: 1 }}>
+      <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
         <Box sx={{ minWidth: 0, flexGrow: 1, ml: -0.75 }}>
           <EditableTitle
             value={project.name}
@@ -211,6 +212,9 @@ export function ProjectPage({ projectId }: { projectId: string }) {
           </IconButton>
         )}
       </Stack>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>
+        {plural(project.boards.length, "board")} · Created {formatDate(project.createdAt)}
+      </Typography>
       <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
         <MenuItem
           sx={{ color: "error.main" }}

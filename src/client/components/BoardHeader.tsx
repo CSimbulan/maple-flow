@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Board } from "../board-moves";
+import { formatDate } from "@/lib/format-date";
 import { BOARD_BACKGROUNDS } from "../colors";
 import { errorMessage, useNotify } from "../notify";
 import { DeleteBoardMutation, UpdateBoardMutation } from "../operations";
@@ -227,6 +228,16 @@ export function BoardHeader({ board }: { board: Board }) {
             Delete Board
           </MenuItem>
         )}
+        <Divider />
+        {/* Not a menu item: a note about the board, last so it stays out of the way. */}
+        <Typography
+          component="li"
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", px: 2, pt: 0.5, pb: 0.5, maxWidth: 220 }}
+        >
+          Created {formatDate(board.createdAt)} by {board.owner.name ?? board.owner.email}
+        </Typography>
       </Menu>
 
       {shareOpen && <ShareDialog board={board} onClose={() => setShareOpen(false)} />}

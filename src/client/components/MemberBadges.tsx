@@ -5,7 +5,8 @@ import SvgIcon, { type SvgIconProps } from "@mui/material/SvgIcon";
 import Tooltip from "@mui/material/Tooltip";
 import { green, pink } from "@mui/material/colors";
 import type { ReactElement } from "react";
-import { anniversaryYears, formatJoinDate, isNewMember } from "@/lib/membership";
+import { formatDate } from "@/lib/format-date";
+import { anniversaryYears, isNewMember } from "@/lib/membership";
 
 /** A simple leaf (Material's "eco" icon). */
 function LeafIcon(props: SvgIconProps) {
@@ -26,7 +27,7 @@ export function MemberBadges({ joinedAt }: { joinedAt: Date }) {
   return (
     <>
       {isNewMember(joinedAt, now) && (
-        <Badge title={`New member: joined ${formatJoinDate(joinedAt)}`}>
+        <Badge title={`New member: joined ${formatDate(joinedAt)}`}>
           <LeafIcon titleAccess="New member" fontSize="small" sx={{ color: green[700] }} />
         </Badge>
       )}

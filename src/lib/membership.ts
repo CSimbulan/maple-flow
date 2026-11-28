@@ -27,12 +27,3 @@ export function anniversaryYears(joinedAt: Date, now: Date = new Date()): number
   if (now.getMonth() !== month || now.getDate() !== day) return null;
   return years;
 }
-
-/** "Nov 27, 2026". */
-export function formatJoinDate(joinedAt: Date): string {
-  return joinedAt.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}

@@ -35,7 +35,7 @@ import { EditableTitle } from "./EditableTitle";
 import { NotFound, PageContainer } from "./OrgPages";
 import { PageLoading } from "./PageLoading";
 import { MemberBadges } from "./MemberBadges";
-import { formatJoinDate } from "@/lib/membership";
+import { formatDate } from "@/lib/format-date";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -199,7 +199,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
                       {isMe && <Chip size="small" variant="outlined" label="You" />}
                     </Stack>
                   }
-                  secondary={joined ? `${m.email} · Joined ${formatJoinDate(joined)}` : m.email}
+                  secondary={joined ? `${m.email} · Joined ${formatDate(joined)}` : m.email}
                   slotProps={{ secondary: { noWrap: true } }}
                 />
               </ListItem>
