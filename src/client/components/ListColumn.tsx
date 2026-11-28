@@ -29,7 +29,8 @@ import {
 import { CARD_SORTS, CARD_SORT_LABELS, type CardSort } from "@/lib/card-sort";
 import { BRAND } from "@/brand";
 import { LIST_COLORS } from "@/lib/list-colors";
-import { SortableCard } from "./CardItem";
+import { cardHasDetails, SortableCard } from "./CardItem";
+import { useCollapsedCards } from "../collapsed-cards";
 import { DragHandle } from "./DragHandle";
 import { ColorSwatches } from "./ColorSwatches";
 import { ConfirmDelete } from "./ConfirmDelete";
@@ -99,6 +100,14 @@ export function ListColumn({
   const [sortList] = useMutation(SortListMutation);
   // The sort options open in a second menu, at the same spot as the list menu.
   const [sortAnchor, setSortAnchor] = useState<HTMLElement | null>(null);
+  // Only cards with details can collapse; the two items act on those.
+  const collapsedCards = useCollapsedCards();
+  const collapsibleIds = list.cards.filter(cardHasDetails).map((c) => c.id);
+  const collapsedCount = collapsibleIds.filter((id) => collapsedCards?.collapsed.has(id)).length;
+  const collapseAll = (value: boolean) => {
+    setMenuAnchor(null);
+    collapsedCards?.setMany(collapsibleIds, value);
+  };
 
   const sortBy = (by: CardSort) => {
     setSortAnchor(null);
@@ -171,6 +180,18 @@ export function ListColumn({
         >
           <ListItemText>Sort Cards</ListItemText>
           <ChevronRightIcon fontSize="small" sx={{ ml: 2, color: "text.secondary" }} />
+        </MenuItem>
+        <MenuItem
+          disabled={!collapsedCards || collapsedCount === collapsibleIds.length}
+          onClick={() => collapseAll(true)}
+        >
+          Collapse All Cards
+        </MenuItem>
+        <MenuItem
+          disabled={!collapsedCards || collapsedCount === 0}
+          onClick={() => collapseAll(false)}
+        >
+          Expand All Cards
         </MenuItem>
         <Divider />
         <MenuItem

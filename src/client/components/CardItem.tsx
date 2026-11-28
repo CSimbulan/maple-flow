@@ -29,6 +29,13 @@ export function formatDue(iso: string) {
   });
 }
 
+/** Whether a card shows anything below its title, i.e. whether it can be collapsed. */
+export function cardHasDetails(
+  card: Pick<BoardCard, "description" | "tags" | "dueDate" | "assignees">,
+): boolean {
+  return !!card.description || card.tags.length > 0 || !!card.dueDate || card.assignees.length > 0;
+}
+
 /** Stops events on a control inside a card from opening the card or starting a drag. */
 const keepInside = {
   onClick: (e: SyntheticEvent) => e.stopPropagation(),
@@ -116,8 +123,7 @@ export function CardFace({
   /** dnd-kit's handle props from useSortable; the drag overlay shows the icon without them. */
   handle?: Omit<Parameters<typeof DragHandle>[0], "label" | "dragging">;
 }) {
-  const hasDetails =
-    !!card.description || card.tags.length > 0 || !!card.dueDate || card.assignees.length > 0;
+  const hasDetails = cardHasDetails(card);
   const [collapsed, toggleCollapsed] = useCardCollapsed(card.id);
   const showDetails = hasDetails && !collapsed;
   return (

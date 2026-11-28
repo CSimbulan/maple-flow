@@ -8,7 +8,12 @@ import type { ReactNode } from "react";
  * this browser's localStorage (per board), so it survives moving a card to another list and
  * reloading the page. Nothing is sent to the server.
  */
-type CollapsedCards = { collapsed: ReadonlySet<string>; toggle: (cardId: string) => void };
+type CollapsedCards = {
+  collapsed: ReadonlySet<string>;
+  toggle: (cardId: string) => void;
+  /** Collapse (true) or expand (false) several cards at once, e.g. a whole list. */
+  setMany: (cardIds: readonly string[], collapsed: boolean) => void;
+};
 
 const Context = createContext<CollapsedCards | null>(null);
 
@@ -74,7 +79,19 @@ export function CollapsedCardsProvider({
     [boardId],
   );
 
-  const value = useMemo(() => ({ collapsed, toggle }), [collapsed, toggle]);
+  const setMany = useCallback(
+    (cardIds: readonly string[], value: boolean) => {
+      const next = new Set(read(boardId));
+      for (const id of cardIds) {
+        if (value) next.add(id);
+        else next.delete(id);
+      }
+      write(boardId, next);
+    },
+    [boardId],
+  );
+
+  const value = useMemo(() => ({ collapsed, toggle, setMany }), [collapsed, toggle, setMany]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
@@ -82,4 +99,9 @@ export function CollapsedCardsProvider({
 export function useCardCollapsed(cardId: string): [boolean, (() => void) | undefined] {
   const ctx = useContext(Context);
   return [ctx?.collapsed.has(cardId) ?? false, ctx ? () => ctx.toggle(cardId) : undefined];
+}
+
+/** The board's collapsed cards and how to change several at once. Null without a provider. */
+export function useCollapsedCards(): Pick<CollapsedCards, "collapsed" | "setMany"> | null {
+  return useContext(Context);
 }
