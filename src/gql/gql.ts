@@ -56,6 +56,12 @@ type Documents = {
     "\n  mutation CreateProject($workspaceId: ID!, $name: String!) {\n    createProject(workspaceId: $workspaceId, name: $name) {\n      project {\n        id\n        name\n      }\n      workspace {\n        id\n        projects {\n          id\n          name\n          boards {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.CreateProjectDocument,
     "\n  mutation RenameProject($id: ID!, $name: String!) {\n    renameProject(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n": typeof types.RenameProjectDocument,
     "\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n": typeof types.DeleteProjectDocument,
+    "\n  fragment CommentFields on Comment {\n    id\n    text\n    createdAt\n    editedAt\n    viewerIsAuthor\n    author {\n      ...UserFields\n    }\n  }\n": typeof types.CommentFieldsFragmentDoc,
+    "\n  fragment ActivityFields on CardActivity {\n    id\n    kind\n    createdAt\n    from\n    to\n    added\n    removed\n    actor {\n      ...UserFields\n    }\n    addedUsers {\n      ...UserFields\n    }\n    removedUsers {\n      ...UserFields\n    }\n  }\n": typeof types.ActivityFieldsFragmentDoc,
+    "\n  query CardFeed($id: ID!) {\n    card(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n      activity {\n        ...ActivityFields\n      }\n    }\n  }\n": typeof types.CardFeedDocument,
+    "\n  mutation AddComment($cardId: ID!, $text: String!) {\n    addComment(cardId: $cardId, text: $text) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": typeof types.AddCommentDocument,
+    "\n  mutation UpdateComment($id: ID!, $text: String!) {\n    updateComment(id: $id, text: $text) {\n      ...CommentFields\n    }\n  }\n": typeof types.UpdateCommentDocument,
+    "\n  mutation DeleteComment($id: ID!) {\n    deleteComment(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": typeof types.DeleteCommentDocument,
     "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n": typeof types.MeDocument,
 };
 const documents: Documents = {
@@ -101,6 +107,12 @@ const documents: Documents = {
     "\n  mutation CreateProject($workspaceId: ID!, $name: String!) {\n    createProject(workspaceId: $workspaceId, name: $name) {\n      project {\n        id\n        name\n      }\n      workspace {\n        id\n        projects {\n          id\n          name\n          boards {\n            id\n          }\n        }\n      }\n    }\n  }\n": types.CreateProjectDocument,
     "\n  mutation RenameProject($id: ID!, $name: String!) {\n    renameProject(id: $id, name: $name) {\n      id\n      name\n    }\n  }\n": types.RenameProjectDocument,
     "\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n": types.DeleteProjectDocument,
+    "\n  fragment CommentFields on Comment {\n    id\n    text\n    createdAt\n    editedAt\n    viewerIsAuthor\n    author {\n      ...UserFields\n    }\n  }\n": types.CommentFieldsFragmentDoc,
+    "\n  fragment ActivityFields on CardActivity {\n    id\n    kind\n    createdAt\n    from\n    to\n    added\n    removed\n    actor {\n      ...UserFields\n    }\n    addedUsers {\n      ...UserFields\n    }\n    removedUsers {\n      ...UserFields\n    }\n  }\n": types.ActivityFieldsFragmentDoc,
+    "\n  query CardFeed($id: ID!) {\n    card(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n      activity {\n        ...ActivityFields\n      }\n    }\n  }\n": types.CardFeedDocument,
+    "\n  mutation AddComment($cardId: ID!, $text: String!) {\n    addComment(cardId: $cardId, text: $text) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": types.AddCommentDocument,
+    "\n  mutation UpdateComment($id: ID!, $text: String!) {\n    updateComment(id: $id, text: $text) {\n      ...CommentFields\n    }\n  }\n": types.UpdateCommentDocument,
+    "\n  mutation DeleteComment($id: ID!) {\n    deleteComment(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": types.DeleteCommentDocument,
     "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n": types.MeDocument,
 };
 
@@ -286,6 +298,30 @@ export function graphql(source: "\n  mutation RenameProject($id: ID!, $name: Str
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation DeleteProject($id: ID!) {\n    deleteProject(id: $id) {\n      id\n      projects {\n        id\n        name\n        boards {\n          id\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment CommentFields on Comment {\n    id\n    text\n    createdAt\n    editedAt\n    viewerIsAuthor\n    author {\n      ...UserFields\n    }\n  }\n"): (typeof documents)["\n  fragment CommentFields on Comment {\n    id\n    text\n    createdAt\n    editedAt\n    viewerIsAuthor\n    author {\n      ...UserFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment ActivityFields on CardActivity {\n    id\n    kind\n    createdAt\n    from\n    to\n    added\n    removed\n    actor {\n      ...UserFields\n    }\n    addedUsers {\n      ...UserFields\n    }\n    removedUsers {\n      ...UserFields\n    }\n  }\n"): (typeof documents)["\n  fragment ActivityFields on CardActivity {\n    id\n    kind\n    createdAt\n    from\n    to\n    added\n    removed\n    actor {\n      ...UserFields\n    }\n    addedUsers {\n      ...UserFields\n    }\n    removedUsers {\n      ...UserFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CardFeed($id: ID!) {\n    card(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n      activity {\n        ...ActivityFields\n      }\n    }\n  }\n"): (typeof documents)["\n  query CardFeed($id: ID!) {\n    card(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n      activity {\n        ...ActivityFields\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AddComment($cardId: ID!, $text: String!) {\n    addComment(cardId: $cardId, text: $text) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation AddComment($cardId: ID!, $text: String!) {\n    addComment(cardId: $cardId, text: $text) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateComment($id: ID!, $text: String!) {\n    updateComment(id: $id, text: $text) {\n      ...CommentFields\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateComment($id: ID!, $text: String!) {\n    updateComment(id: $id, text: $text) {\n      ...CommentFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteComment($id: ID!) {\n    deleteComment(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation DeleteComment($id: ID!) {\n    deleteComment(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

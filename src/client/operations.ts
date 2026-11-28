@@ -603,6 +603,86 @@ export const DeleteProjectMutation = graphql(`
   }
 `);
 
+// ---- Comments and activity ----
+
+export const CommentFields = graphql(`
+  fragment CommentFields on Comment {
+    id
+    text
+    createdAt
+    editedAt
+    viewerIsAuthor
+    author {
+      ...UserFields
+    }
+  }
+`);
+
+export const ActivityFields = graphql(`
+  fragment ActivityFields on CardActivity {
+    id
+    kind
+    createdAt
+    from
+    to
+    added
+    removed
+    actor {
+      ...UserFields
+    }
+    addedUsers {
+      ...UserFields
+    }
+    removedUsers {
+      ...UserFields
+    }
+  }
+`);
+
+export const CardFeedQuery = graphql(`
+  query CardFeed($id: ID!) {
+    card(id: $id) {
+      id
+      comments {
+        ...CommentFields
+      }
+      activity {
+        ...ActivityFields
+      }
+    }
+  }
+`);
+
+export const AddCommentMutation = graphql(`
+  mutation AddComment($cardId: ID!, $text: String!) {
+    addComment(cardId: $cardId, text: $text) {
+      id
+      comments {
+        ...CommentFields
+      }
+    }
+  }
+`);
+
+export const UpdateCommentMutation = graphql(`
+  mutation UpdateComment($id: ID!, $text: String!) {
+    updateComment(id: $id, text: $text) {
+      ...CommentFields
+    }
+  }
+`);
+
+export const DeleteCommentMutation = graphql(`
+  mutation DeleteComment($id: ID!) {
+    deleteComment(id: $id) {
+      id
+      comments {
+        ...CommentFields
+      }
+    }
+  }
+`);
+
 export const MeQuery = graphql(`
   query Me {
     me {

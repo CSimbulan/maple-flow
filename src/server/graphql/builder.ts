@@ -1,12 +1,15 @@
 import SchemaBuilder from "@pothos/core";
-import type {
-  BoardDoc,
-  CardDoc,
-  ListDoc,
-  OrganizationDoc,
-  ProjectDoc,
-  TagDoc,
-  UserDoc,
+import {
+  ACTIVITY_KINDS,
+  type ActivityDoc,
+  type BoardDoc,
+  type CardDoc,
+  type CommentDoc,
+  type ListDoc,
+  type OrganizationDoc,
+  type ProjectDoc,
+  type TagDoc,
+  type UserDoc,
 } from "../db/models";
 import { PRIORITIES } from "../../lib/priority";
 import type { Context } from "./context";
@@ -40,6 +43,12 @@ export function createBuilder() {
     PriorityEnum: builder.enumType("Priority", {
       description: "How urgent a card is, from HIGHEST to LOWEST.",
       values: PRIORITIES,
+    }),
+    CommentRef: builder.objectRef<CommentDoc>("Comment"),
+    ActivityRef: builder.objectRef<ActivityDoc>("CardActivity"),
+    ActivityKindEnum: builder.enumType("ActivityKind", {
+      description: "What happened to a card in a CardActivity entry.",
+      values: ACTIVITY_KINDS,
     }),
     MoveCardPayloadRef: builder.objectRef<{
       card: CardDoc;

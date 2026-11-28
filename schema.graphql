@@ -1,3 +1,17 @@
+"""What happened to a card in a CardActivity entry."""
+enum ActivityKind {
+  ARCHIVED
+  ASSIGNEES
+  CREATED
+  DESCRIPTION
+  DUE_DATE
+  MOVED
+  PRIORITY
+  RENAMED
+  RESTORED
+  TAGS
+}
+
 type Board {
   """Archived cards on this board, most recently archived first."""
   archivedCards: [Card!]!
@@ -26,9 +40,14 @@ type Board {
 }
 
 type Card {
+  """What people did to the card, oldest first."""
+  activity: [CardActivity!]!
   archived: Boolean!
   assignees: [User!]!
   boardId: ID!
+
+  """Comments on the card, oldest first."""
+  comments: [Comment!]!
   description: String!
   dueDate: String
   id: ID!
@@ -42,6 +61,47 @@ type Card {
   """The card's tags, in the board's tag order."""
   tags: [Tag!]!
   title: String!
+}
+
+"""Something someone did to a card."""
+type CardActivity {
+  actor: User
+
+  """Tag names added (TAGS)."""
+  added: [String!]!
+
+  """People assigned (ASSIGNEES)."""
+  addedUsers: [User!]!
+  createdAt: String!
+
+  """
+  Old value: list title (MOVED), card title (RENAMED), YYYY-MM-DD (DUE_DATE) or Priority value (PRIORITY). Null means none.
+  """
+  from: String
+  id: ID!
+  kind: ActivityKind!
+
+  """Tag names removed (TAGS)."""
+  removed: [String!]!
+
+  """People unassigned (ASSIGNEES)."""
+  removedUsers: [User!]!
+
+  """New value, like `from`; also the list for CREATED and RESTORED."""
+  to: String
+}
+
+type Comment {
+  author: User
+  createdAt: String!
+
+  """When the text was last edited; null if never."""
+  editedAt: String
+  id: ID!
+  text: String!
+
+  """Whether the viewer wrote it, and so can edit and delete it."""
+  viewerIsAuthor: Boolean!
 }
 
 type CreateProjectPayload {
@@ -81,6 +141,9 @@ type MoveCardPayload {
 type Mutation {
   addBoardMember(boardId: ID!, email: String!): Board!
 
+  """Comment on an active card. Returns the card with its comments."""
+  addComment(cardId: ID!, text: String!): Card!
+
   """Add someone who has signed in before. Any member can add people."""
   addWorkspaceMember(email: String!, workspaceId: ID!): Workspace!
   archiveCard(id: ID!): List!
@@ -107,6 +170,11 @@ type Mutation {
 
   """Permanently delete a card (active or archived). Can't be undone."""
   deleteCard(id: ID!): DeleteCardPayload!
+
+  """
+  Delete a comment you wrote. Returns its card with the remaining comments.
+  """
+  deleteComment(id: ID!): Card!
 
   """
   Permanently delete a list (active or archived) and every card in it, including archived ones. Can't be undone.
@@ -148,6 +216,9 @@ type Mutation {
   restoreList(id: ID!): RestoreListPayload!
   updateBoard(background: String, id: ID!, title: String): Board!
   updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, priority: Priority, tagIds: [ID!], title: String): Card!
+
+  """Change the text of a comment you wrote."""
+  updateComment(id: ID!, text: String!): Comment!
   updateListColor(color: String!, id: ID!): List!
   updateTag(boardId: ID!, color: String, name: String, tagId: ID!): Board!
 }
@@ -171,6 +242,9 @@ type Project {
 
 type Query {
   board(id: ID!): Board
+
+  """A card (active or archived), or null if the viewer can't open it."""
+  card(id: ID!): Card
   me: User
   project(id: ID!): Project
 

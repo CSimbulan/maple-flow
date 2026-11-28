@@ -77,6 +77,13 @@ database**; use `npm run dev:memory` (or the tests) for experiments. `dev:memory
   The client relies on this instead of manual cache writes; arrays use `merge: false` in the
   Apollo `typePolicies` (`src/client/apollo/client.ts`).
 - Validation is plain Zod inside resolvers via `parse()` → `BAD_USER_INPUT`.
+- Card comments and activity live in `comments.ts` (types, `Card.comments`/`activity`, `card`
+  query) and `activity.ts`. Card mutations call `logActivity` with entries from `cardChanges` /
+  `creationEntries`; one call shares a `createdAt`, which the client uses to show a save's
+  changes as one sentence (`groupActivity` in `src/client/activity-text.ts`). Entries copy list
+  and tag names in. Reorders within a list and side effects of board-level actions (tag deletes,
+  member removal, list archiving) aren't logged. Deleting cards/lists/boards must also delete
+  their comments and activity (`deleteCardHistory`, `deleteBoards`).
 
 ### Naming: workspace vs organization
 

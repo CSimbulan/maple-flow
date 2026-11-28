@@ -18,7 +18,20 @@ function makeCache() {
       List: { fields: { cards: { merge: false } } },
       Workspace: { fields: { members: { merge: false }, projects: { merge: false } } },
       Project: { fields: { boards: { merge: false } } },
-      Card: { fields: { assignees: { merge: false }, tags: { merge: false } } },
+      Card: {
+        fields: {
+          assignees: { merge: false },
+          tags: { merge: false },
+          comments: { merge: false },
+          activity: { merge: false },
+        },
+      },
+      CardActivity: {
+        fields: {
+          addedUsers: { merge: false },
+          removedUsers: { merge: false },
+        },
+      },
     },
   });
 }

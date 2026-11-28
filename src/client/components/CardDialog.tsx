@@ -23,6 +23,7 @@ import { errorMessage, useNotify } from "../notify";
 import { ArchiveCardMutation, CreateCardMutation, UpdateCardMutation } from "../operations";
 import { useDeleteCard } from "../deletes";
 import { useIsPhone } from "../useIsPhone";
+import { CardFeed } from "./CardFeed";
 import { userInitial } from "./CardItem";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { PriorityIcon } from "./PriorityIcon";
@@ -216,6 +217,8 @@ export function CardDialog({
               placeholder="Add a more detailed description…"
               fullWidth
             />
+            {/* Only saved cards have comments and activity. */}
+            {card && <CardFeed cardId={card.id} />}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ justifyContent: card ? "space-between" : "flex-end", px: 3, pb: 2 }}>

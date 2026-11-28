@@ -3,7 +3,14 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { connectDb } from "../src/server/db/connect";
-import { BoardModel, CardModel, ListModel, UserModel } from "../src/server/db/models";
+import {
+  ActivityModel,
+  BoardModel,
+  CardModel,
+  CommentModel,
+  ListModel,
+  UserModel,
+} from "../src/server/db/models";
 import { ensureWorkspace } from "../src/server/db/workspace";
 import { createContext } from "../src/server/graphql/context";
 import { schema } from "../src/server/graphql/schema";
@@ -972,5 +979,211 @@ describe("workspaces and projects", () => {
     await run(ann, `mutation ($o: ID!) { deleteWorkspace(id: $o) }`, { o: org });
     expect((await run(ann, ORGS)).workspaces).toEqual([]);
     expect(await BoardModel.countDocuments({})).toBe(0);
+  });
+});
+
+describe("comments and activity", () => {
+  const FEED = `query ($id: ID!) {
+    card(id: $id) {
+      comments { id text editedAt viewerIsAuthor author { name } }
+      activity {
+        createdAt kind from to added removed actor { name } addedUsers { name } removedUsers { name }
+      }
+    }
+  }`;
+  const feed = async (id: string, userId = ann) => (await run(userId, FEED, { id })).card;
+  const ADD = `mutation ($c: ID!, $t: String!) { addComment(cardId: $c, text: $t) { comments { id text } } }`;
+  const EDIT = `mutation ($id: ID!, $t: String!) { updateComment(id: $id, text: $t) { text editedAt } }`;
+  const DELETE = `mutation ($id: ID!) { deleteComment(id: $id) { comments { id } } }`;
+  const MOVE = `mutation ($id: ID!, $to: ID!, $after: ID) {
+    moveCard(id: $id, toListId: $to, afterId: $after) { card { id } }
+  }`;
+
+  async function setup() {
+    const board = await newBoard();
+    await run(
+      ann,
+      `mutation ($o: ID!) { addWorkspaceMember(workspaceId: $o, email: "bob@example.com") { id } }`,
+      {
+        o: await orgOf(ann),
+      },
+    );
+    await addCards(ann, board.lists[0].id, ["A", "B"]);
+    return { board, a: await cardId(board.id, "A"), b: await cardId(board.id, "B") };
+  }
+
+  it("adds comments, which only their author can edit or delete", async () => {
+    const { a } = await setup();
+    await run(ann, ADD, { c: a, t: "  First  " });
+    const added = await run(bob, ADD, { c: a, t: "Second" });
+    expect(added.addComment.comments.map((c: { text: string }) => c.text)).toEqual([
+      "First",
+      "Second",
+    ]);
+    const [first] = (await feed(a, bob)).comments;
+    expect(first).toMatchObject({ author: { name: "Ann" }, viewerIsAuthor: false, editedAt: null });
+
+    expect(await errorCode(run(bob, EDIT, { id: first.id, t: "Hacked" }))).toBe("FORBIDDEN");
+    expect(await errorCode(run(bob, DELETE, { id: first.id }))).toBe("FORBIDDEN");
+    expect(await errorCode(run(ann, ADD, { c: a, t: "   " }))).toBe("BAD_USER_INPUT");
+
+    const edited = await run(ann, EDIT, { id: first.id, t: "First, edited" });
+    expect(edited.updateComment.text).toBe("First, edited");
+    expect(edited.updateComment.editedAt).not.toBeNull();
+
+    const after = await run(ann, DELETE, { id: first.id });
+    expect(after.deleteComment.comments).toHaveLength(1);
+  });
+
+  it("hides comments from people who can't open the board", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    const a = await cardId(board.id, "A");
+    const { addComment } = await run(ann, ADD, { c: a, t: "Secret" });
+    expect((await run(bob, FEED, { id: a })).card).toBeNull();
+    expect(await errorCode(run(bob, ADD, { c: a, t: "Hi" }))).toBe("NOT_FOUND");
+    expect(await errorCode(run(bob, DELETE, { id: addComment.comments[0].id }))).toBe("NOT_FOUND");
+  });
+
+  it("logs card changes, moves between lists, archiving and restoring", async () => {
+    const { board, a, b } = await setup();
+    const [todo, doing] = board.lists;
+    const tags = (
+      await run(ann, `query ($id: ID!) { board(id: $id) { tags { id name } } }`, {
+        id: board.id,
+      })
+    ).board.tags as { id: string; name: string }[];
+
+    await run(
+      ann,
+      `mutation ($id: ID!, $t: [ID!], $a: [ID!]) {
+        updateCard(id: $id, title: "A2", description: "Notes", tagIds: $t, dueDate: "2026-12-03",
+          priority: HIGH, assigneeIds: $a) { id }
+      }`,
+      { id: a, t: [tags[0].id, tags[1].id], a: [bob] },
+    );
+    // Saving the same values again logs nothing.
+    await run(
+      ann,
+      `mutation ($id: ID!, $t: [ID!]) {
+        updateCard(id: $id, title: "A2", description: "Notes", tagIds: $t, priority: HIGH) { id }
+      }`,
+      { id: a, t: [tags[1].id, tags[0].id] },
+    );
+    await run(
+      bob,
+      `mutation ($id: ID!, $t: [ID!]) {
+        updateCard(id: $id, tagIds: $t, dueDate: null, priority: null, assigneeIds: []) { id }
+      }`,
+      { id: a, t: [tags[1].id, tags[2].id] },
+    );
+    // Reordering within a list isn't logged; moving to another list is.
+    await run(ann, MOVE, { id: a, to: todo.id, after: b });
+    await run(bob, MOVE, { id: a, to: doing.id });
+    await run(ann, `mutation ($id: ID!) { archiveCard(id: $id) { id } }`, { id: a });
+    await run(
+      ann,
+      `mutation ($id: ID!, $l: ID) { restoreCard(id: $id, listId: $l) { card { id } } }`,
+      {
+        id: a,
+        l: todo.id,
+      },
+    );
+
+    const activity = (await feed(a)).activity;
+    // One save's changes share a time, so the feed can show them as one entry.
+    const firstSave = activity.slice(1, 7).map((e: { createdAt: string }) => e.createdAt);
+    expect(new Set(firstSave).size).toBe(1);
+    expect(activity).toEqual([
+      expect.objectContaining({ kind: "CREATED", to: "To do", actor: { name: "Ann" } }),
+      expect.objectContaining({ kind: "RENAMED", from: "A", to: "A2" }),
+      expect.objectContaining({ kind: "DESCRIPTION" }),
+      expect.objectContaining({ kind: "TAGS", added: [tags[0].name, tags[1].name], removed: [] }),
+      expect.objectContaining({ kind: "DUE_DATE", from: null, to: "2026-12-03" }),
+      expect.objectContaining({ kind: "PRIORITY", from: null, to: "HIGH" }),
+      expect.objectContaining({
+        kind: "ASSIGNEES",
+        addedUsers: [{ name: "Bob" }],
+        removedUsers: [],
+      }),
+      expect.objectContaining({
+        kind: "TAGS",
+        added: [tags[2].name],
+        removed: [tags[0].name],
+        actor: { name: "Bob" },
+      }),
+      expect.objectContaining({ kind: "DUE_DATE", from: "2026-12-03", to: null }),
+      expect.objectContaining({ kind: "PRIORITY", from: "HIGH", to: null }),
+      expect.objectContaining({
+        kind: "ASSIGNEES",
+        addedUsers: [],
+        removedUsers: [{ name: "Bob" }],
+      }),
+      expect.objectContaining({
+        kind: "MOVED",
+        from: "To do",
+        to: "Doing",
+        actor: { name: "Bob" },
+      }),
+      expect.objectContaining({ kind: "ARCHIVED" }),
+      expect.objectContaining({ kind: "RESTORED", to: "To do" }),
+    ]);
+    // Tag names stay readable after the tag is renamed or deleted.
+    await run(ann, `mutation ($b: ID!, $t: ID!) { deleteTag(boardId: $b, tagId: $t) { id } }`, {
+      b: board.id,
+      t: tags[0].id,
+    });
+    expect((await feed(a)).activity[3].added).toEqual([tags[0].name, tags[1].name]);
+  });
+
+  it("logs a new card's starting details with its creation, at the same time", async () => {
+    const board = await newBoard();
+    const tags = (
+      await run(ann, `query ($id: ID!) { board(id: $id) { tags { id name } } }`, { id: board.id })
+    ).board.tags as { id: string; name: string }[];
+    await run(
+      ann,
+      `mutation ($l: ID!, $t: [ID!], $a: [ID!]) {
+        createCard(listId: $l, title: "New", description: "Notes", tagIds: $t, priority: LOW,
+          dueDate: "2026-12-03", assigneeIds: $a) { id }
+      }`,
+      { l: board.lists[0].id, t: [tags[1].id], a: [ann] },
+    );
+    const activity = (await feed(await cardId(board.id, "New"))).activity;
+    expect(activity.map((e: { kind: string }) => e.kind)).toEqual([
+      "CREATED",
+      "DESCRIPTION",
+      "TAGS",
+      "DUE_DATE",
+      "PRIORITY",
+      "ASSIGNEES",
+    ]);
+    expect(activity[2].added).toEqual([tags[1].name]);
+    expect(new Set(activity.map((e: { createdAt: string }) => e.createdAt)).size).toBe(1);
+
+    // A card created with just a title logs only that it was created.
+    await addCards(ann, board.lists[0].id, ["Plain"]);
+    const plain = (await feed(await cardId(board.id, "Plain"))).activity;
+    expect(plain.map((e: { kind: string }) => e.kind)).toEqual(["CREATED"]);
+  });
+
+  it("deletes comments and activity with their card, list or board", async () => {
+    const { board, a, b } = await setup();
+    await run(ann, ADD, { c: a, t: "On A" });
+    await run(ann, ADD, { c: b, t: "On B" });
+    await run(ann, `mutation ($id: ID!) { deleteCard(id: $id) { deletedId } }`, { id: a });
+    expect(await CommentModel.countDocuments({ cardId: a })).toBe(0);
+    expect(await ActivityModel.countDocuments({ cardId: a })).toBe(0);
+    expect(await CommentModel.countDocuments({ cardId: b })).toBe(1);
+
+    await run(ann, `mutation ($id: ID!) { deleteList(id: $id) { deletedId } }`, {
+      id: board.lists[0].id,
+    });
+    expect(await CommentModel.countDocuments({})).toBe(0);
+    expect(await ActivityModel.countDocuments({})).toBe(0);
+
+    await addCards(ann, board.lists[1].id, ["C"]);
+    await run(ann, `mutation ($id: ID!) { deleteBoard(id: $id) }`, { id: board.id });
+    expect(await ActivityModel.countDocuments({})).toBe(0);
   });
 });

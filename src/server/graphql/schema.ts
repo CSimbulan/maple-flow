@@ -6,8 +6,10 @@ import { initialPositions, insertIndex, planInsert } from "../../lib/position";
 import { PRIORITIES } from "../../lib/priority";
 import { DEFAULT_TAGS } from "../../lib/tags";
 import {
+  ActivityModel,
   BoardModel,
   CardModel,
+  CommentModel,
   ListModel,
   UserModel,
   type BoardDoc,
@@ -20,6 +22,9 @@ import type { Context } from "./context";
 import { badInput, forbidden, notFound, objectId, parse } from "./errors";
 import { sameTagName, tagsOf } from "./tags";
 import { defineWorkspaceSchema } from "./workspaces";
+import { cardChanges, creationEntries, logActivity } from "./activity";
+import { defineCommentSchema } from "./comments";
+import { deleteCardHistory } from "../db/cascade";
 import {
   boardAudienceIds,
   canOpenBoard,
@@ -150,6 +155,7 @@ export function buildSchema() {
   } = parts;
   defineTypes(parts);
   defineWorkspaceSchema(parts);
+  defineCommentSchema(parts);
 
   builder.queryType({
     fields: (t) => ({
@@ -228,6 +234,8 @@ export function buildSchema() {
         resolve: async (_root, { id }, ctx) => {
           await requireBoardManager(ctx, id);
           await Promise.all([
+            CommentModel.deleteMany({ boardId: id }),
+            ActivityModel.deleteMany({ boardId: id }),
             CardModel.deleteMany({ boardId: id }),
             ListModel.deleteMany({ boardId: id }),
             BoardModel.deleteOne({ _id: id }),
@@ -412,6 +420,10 @@ export function buildSchema() {
         args: { id: t.arg.id({ required: true }) },
         resolve: async (_root, { id }, ctx) => {
           const list = await requireList(ctx, id, { archived: "any" });
+          const cards = await CardModel.find({ listId: list._id })
+            .select({ _id: 1 })
+            .lean<{ _id: Types.ObjectId }[]>();
+          await deleteCardHistory(cards.map((c) => c._id));
           await CardModel.deleteMany({ listId: list._id });
           await ListModel.deleteOne({ _id: list._id });
           return { deletedId: id, board: await reloadBoard(ctx, list.boardId) };
@@ -423,6 +435,7 @@ export function buildSchema() {
         args: { id: t.arg.id({ required: true }) },
         resolve: async (_root, { id }, ctx) => {
           const card = await requireCard(ctx, id, { archived: "any" });
+          await deleteCardHistory([card._id]);
           await CardModel.deleteOne({ _id: card._id });
           const list = (await ListModel.findById(card.listId).lean<ListDoc>())!;
           return { deletedId: id, list, board: await reloadBoard(ctx, card.boardId) };
@@ -471,13 +484,15 @@ export function buildSchema() {
           const input = parse(cardDetails.extend({ title }), args);
           const details = await cardDetailsSet(ctx, list.boardId, input);
           const position = await positionIn(CardModel, { listId: list._id }, null);
-          await CardModel.create({
+          const card = await CardModel.create({
             ...details,
             boardId: list.boardId,
             listId: list._id,
             title: input.title,
             position,
           });
+          const board = (await ctx.loaders.boardById.load(list.boardId.toString()))!;
+          await logActivity(ctx, card, creationEntries(list.title, details, await tagsOf(board)));
           return list;
         },
       }),
@@ -497,6 +512,8 @@ export function buildSchema() {
           const input = parse(cardDetails.extend({ title: title.nullish() }), args);
           const $set = await cardDetailsSet(ctx, card.boardId, input);
           if (input.title) $set.title = input.title;
+          const board = (await ctx.loaders.boardById.load(card.boardId.toString()))!;
+          await logActivity(ctx, card, cardChanges(card, $set, await tagsOf(board)));
           return (await CardModel.findByIdAndUpdate(
             card._id,
             { $set },
@@ -532,6 +549,12 @@ export function buildSchema() {
             { $set: { listId: toList._id, position } },
             { returnDocument: "after" },
           ).lean<CardDoc>())!;
+          // Reordering within a list isn't recorded, only moves to another list.
+          if (!fromList._id.equals(toList._id)) {
+            await logActivity(ctx, card, [
+              { kind: "MOVED", from: fromList.title, to: toList.title },
+            ]);
+          }
           return { card: moved, fromList, toList };
         },
       }),
@@ -541,6 +564,7 @@ export function buildSchema() {
         resolve: async (_root, { id }, ctx) => {
           const card = await requireCard(ctx, id);
           await CardModel.updateOne({ _id: card._id }, { $set: { archived: true } });
+          await logActivity(ctx, card, [{ kind: "ARCHIVED" }]);
           return (await ListModel.findById(card.listId).lean<ListDoc>())!;
         },
       }),
@@ -567,6 +591,7 @@ export function buildSchema() {
             { $set: { archived: false, listId: list._id, position } },
             { returnDocument: "after" },
           ).lean<CardDoc>())!;
+          await logActivity(ctx, card, [{ kind: "RESTORED", to: list.title }]);
           return { card: restored, list, board: await reloadBoard(ctx, card.boardId) };
         },
       }),

@@ -78,6 +78,53 @@ export interface CardDoc extends Timestamps {
   archived: boolean;
 }
 
+export interface CommentDoc extends Timestamps {
+  _id: Types.ObjectId;
+  cardId: Types.ObjectId;
+  /** The card's board, so deleting a board (or its project) can delete its comments. */
+  boardId: Types.ObjectId;
+  authorId: Types.ObjectId;
+  text: string;
+  /** When the author last changed the text; null if never edited. */
+  editedAt: Date | null;
+}
+
+export const ACTIVITY_KINDS = [
+  "CREATED",
+  "RENAMED",
+  "DESCRIPTION",
+  "TAGS",
+  "DUE_DATE",
+  "PRIORITY",
+  "ASSIGNEES",
+  "MOVED",
+  "ARCHIVED",
+  "RESTORED",
+] as const;
+export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
+
+/**
+ * Something someone did to a card. Names (lists, tags, titles) are copied in when it happens,
+ * so the entry still reads right after they're renamed or deleted.
+ */
+export interface ActivityDoc {
+  _id: Types.ObjectId;
+  cardId: Types.ObjectId;
+  boardId: Types.ObjectId;
+  actorId: Types.ObjectId;
+  kind: ActivityKind;
+  /**
+   * Old and new value: list titles (CREATED has only `to`, MOVED and RESTORED both), card titles
+   * (RENAMED), dates as YYYY-MM-DD (DUE_DATE) or priorities (PRIORITY). Null for "none".
+   */
+  from: string | null;
+  to: string | null;
+  /** Tag names (TAGS) or user ids (ASSIGNEES) added and removed. */
+  added: string[];
+  removed: string[];
+  createdAt: Date;
+}
+
 const { ObjectId } = Schema.Types;
 
 const userSchema = new Schema<UserDoc>(
@@ -153,6 +200,33 @@ const cardSchema = new Schema<CardDoc>(
 );
 cardSchema.index({ listId: 1, position: 1 });
 
+const commentSchema = new Schema<CommentDoc>(
+  {
+    cardId: { type: ObjectId, ref: "Card", required: true },
+    boardId: { type: ObjectId, ref: "Board", required: true, index: true },
+    authorId: { type: ObjectId, ref: "User", required: true },
+    text: { type: String, required: true },
+    editedAt: { type: Date, default: null },
+  },
+  { timestamps: true },
+);
+commentSchema.index({ cardId: 1, createdAt: 1 });
+
+const activitySchema = new Schema<ActivityDoc>(
+  {
+    cardId: { type: ObjectId, ref: "Card", required: true },
+    boardId: { type: ObjectId, ref: "Board", required: true, index: true },
+    actorId: { type: ObjectId, ref: "User", required: true },
+    kind: { type: String, enum: ACTIVITY_KINDS, required: true },
+    from: { type: String, default: null },
+    to: { type: String, default: null },
+    added: { type: [String], default: [] },
+    removed: { type: [String], default: [] },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+activitySchema.index({ cardId: 1, createdAt: 1 });
+
 function model<T>(name: string, schema: Schema<T>): Model<T> {
   // Next.js dev reloads re-run this file, so a model can already exist. Replace it rather than
   // reuse it: a reused model keeps its old schema, and Mongoose silently drops fields it doesn't
@@ -167,3 +241,5 @@ export const ProjectModel = model("Project", projectSchema);
 export const BoardModel = model("Board", boardSchema);
 export const ListModel = model("List", listSchema);
 export const CardModel = model("Card", cardSchema);
+export const CommentModel = model("Comment", commentSchema);
+export const ActivityModel = model("Activity", activitySchema);

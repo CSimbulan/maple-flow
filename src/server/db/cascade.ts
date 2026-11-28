@@ -1,9 +1,27 @@
 import type { Types } from "mongoose";
-import { BoardModel, CardModel, ListModel, ProjectModel } from "./models";
+import {
+  ActivityModel,
+  BoardModel,
+  CardModel,
+  CommentModel,
+  ListModel,
+  ProjectModel,
+} from "./models";
 
-/** Permanently delete boards with all their lists and cards. */
+/** Permanently delete cards' comments and activity (the cards themselves are left). */
+export async function deleteCardHistory(cardIds: Types.ObjectId[]): Promise<void> {
+  if (cardIds.length === 0) return;
+  await Promise.all([
+    CommentModel.deleteMany({ cardId: { $in: cardIds } }),
+    ActivityModel.deleteMany({ cardId: { $in: cardIds } }),
+  ]);
+}
+
+/** Permanently delete boards with all their lists, cards, comments and activity. */
 export async function deleteBoards(boardIds: Types.ObjectId[]): Promise<void> {
   if (boardIds.length === 0) return;
+  await CommentModel.deleteMany({ boardId: { $in: boardIds } });
+  await ActivityModel.deleteMany({ boardId: { $in: boardIds } });
   await CardModel.deleteMany({ boardId: { $in: boardIds } });
   await ListModel.deleteMany({ boardId: { $in: boardIds } });
   await BoardModel.deleteMany({ _id: { $in: boardIds } });
