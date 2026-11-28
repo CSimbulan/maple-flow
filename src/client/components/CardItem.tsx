@@ -150,8 +150,13 @@ export function CardFace({
       <Stack direction="row" spacing={0.5} sx={{ alignItems: "flex-start", ml: -0.5 }}>
         <DragHandle label={`Drag card ${card.title}`} dragging={dragging} {...handle} />
         <Typography
-          variant="body1"
-          sx={{ fontWeight: 600, lineHeight: 1.3, pt: 0.25, minWidth: 0, overflowWrap: "anywhere" }}
+          variant="body2"
+          sx={{
+            lineHeight: 1.3,
+            pt: 0.25,
+            minWidth: 0,
+            overflowWrap: "anywhere",
+          }}
         >
           {card.title}
         </Typography>
