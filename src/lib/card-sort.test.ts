@@ -9,6 +9,7 @@ function card(title: string, overrides: Partial<SortableCard> = {}): SortableCar
     priority: null,
     createdAt: day(1),
     lastUpdated: day(1),
+    addedToList: day(1),
     dueDate: null,
     commentCount: 0,
     assigneeCount: 0,
@@ -55,6 +56,27 @@ describe("sortCards", () => {
     ];
     expect(titles(sortCards(cards, "UPDATED_NEWEST"))).toEqual(["y", "x", "z"]);
     expect(titles(sortCards(cards, "UPDATED_OLDEST"))).toEqual(["z", "x", "y"]);
+  });
+
+  it("sorts by when cards were added to the list either way, then priority", () => {
+    const cards = [
+      card("moved in later", { createdAt: day(1), addedToList: day(9) }),
+      card("here first", { createdAt: day(2), addedToList: day(2) }),
+      card("same day, high", { createdAt: day(3), addedToList: day(5), priority: "HIGH" }),
+      card("same day", { createdAt: day(4), addedToList: day(5) }),
+    ];
+    expect(titles(sortCards(cards, "ADDED_NEWEST"))).toEqual([
+      "moved in later",
+      "same day, high",
+      "same day",
+      "here first",
+    ]);
+    expect(titles(sortCards(cards, "ADDED_OLDEST"))).toEqual([
+      "here first",
+      "same day, high",
+      "same day",
+      "moved in later",
+    ]);
   });
 
   it("sorts by due date, soonest first and none last, ties by priority", () => {

@@ -106,6 +106,8 @@ type CardActivity {
 
 """How sortList orders a list's cards."""
 enum CardSort {
+  ADDED_NEWEST
+  ADDED_OLDEST
   CREATED_NEWEST
   CREATED_OLDEST
   DUE_DATE

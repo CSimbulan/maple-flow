@@ -9,6 +9,8 @@ export const CARD_SORTS = [
   "CREATED_OLDEST",
   "UPDATED_NEWEST",
   "UPDATED_OLDEST",
+  "ADDED_NEWEST",
+  "ADDED_OLDEST",
   "DUE_DATE",
   "TITLE",
   "MOST_COMMENTS",
@@ -23,6 +25,8 @@ export const CARD_SORT_LABELS: Record<CardSort, string> = {
   CREATED_OLDEST: "Created: Oldest First",
   UPDATED_NEWEST: "Updated: Newest First",
   UPDATED_OLDEST: "Updated: Oldest First",
+  ADDED_NEWEST: "Added to List: New",
+  ADDED_OLDEST: "Added to List: Old",
   DUE_DATE: "Due Date",
   TITLE: "Title (A–Z)",
   MOST_COMMENTS: "Most Comments",
@@ -36,6 +40,11 @@ export type SortableCard = {
   createdAt: Date;
   /** Latest activity entry or comment; the creation time if there's neither. */
   lastUpdated: Date;
+  /**
+   * When the card arrived in its current list: its latest created, moved or restored entry;
+   * the creation time for cards from before the activity log.
+   */
+  addedToList: Date;
   dueDate: Date | null;
   commentCount: number;
   assigneeCount: number;
@@ -75,6 +84,16 @@ const COMPARES: Record<CardSort, Compare> = {
   ),
   UPDATED_OLDEST: chain(
     (a, b) => a.lastUpdated.getTime() - b.lastUpdated.getTime(),
+    byPriority,
+    oldestFirst,
+  ),
+  ADDED_NEWEST: chain(
+    (a, b) => b.addedToList.getTime() - a.addedToList.getTime(),
+    byPriority,
+    oldestFirst,
+  ),
+  ADDED_OLDEST: chain(
+    (a, b) => a.addedToList.getTime() - b.addedToList.getTime(),
     byPriority,
     oldestFirst,
   ),

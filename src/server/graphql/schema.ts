@@ -101,7 +101,7 @@ async function cardDetailsSet(
 async function sortableCards(cards: CardDoc[]): Promise<(SortableCard & { doc: CardDoc })[]> {
   const cardIds = cards.map((c) => c._id);
   type Stats = { _id: Types.ObjectId; count: number; last: Date };
-  const [comments, activity] = await Promise.all([
+  const [comments, activity, arrivals] = await Promise.all([
     CommentModel.aggregate<Stats>([
       { $match: { cardId: { $in: cardIds } } },
       { $group: { _id: "$cardId", count: { $sum: 1 }, last: { $max: "$createdAt" } } },
@@ -110,10 +110,17 @@ async function sortableCards(cards: CardDoc[]): Promise<(SortableCard & { doc: C
       { $match: { cardId: { $in: cardIds } } },
       { $group: { _id: "$cardId", count: { $sum: 1 }, last: { $max: "$createdAt" } } },
     ]),
+    // Entering a list is always logged (created in it, moved to it, restored to it), so the
+    // latest such entry is when the card arrived in the list it's in now.
+    ActivityModel.aggregate<Stats>([
+      { $match: { cardId: { $in: cardIds }, kind: { $in: ["CREATED", "MOVED", "RESTORED"] } } },
+      { $group: { _id: "$cardId", count: { $sum: 1 }, last: { $max: "$createdAt" } } },
+    ]),
   ]);
   const byCard = (stats: Stats[]) => new Map(stats.map((s) => [s._id.toString(), s]));
   const commentStats = byCard(comments);
   const activityStats = byCard(activity);
+  const arrivalStats = byCard(arrivals);
   return cards.map((doc) => {
     const id = doc._id.toString();
     const times = [doc.createdAt, commentStats.get(id)?.last, activityStats.get(id)?.last];
@@ -124,6 +131,8 @@ async function sortableCards(cards: CardDoc[]): Promise<(SortableCard & { doc: C
       createdAt: doc.createdAt,
       // Editing, moving to another list or commenting; not dragging within a list.
       lastUpdated: new Date(Math.max(...times.map((t) => t?.getTime() ?? 0))),
+      // Cards from before the activity log have no entries: their creation time.
+      addedToList: arrivalStats.get(id)?.last ?? doc.createdAt,
       dueDate: doc.dueDate ?? null,
       commentCount: commentStats.get(id)?.count ?? 0,
       assigneeCount: doc.assigneeIds.length,

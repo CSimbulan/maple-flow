@@ -1273,6 +1273,44 @@ describe("sorting a list", () => {
     expect(await sortedTitles(todo, "MOST_COMMENTS")).toEqual(["A", "B", "C"]);
   });
 
+  it("sorts by when cards arrived in the list, by moves as well as creation", async () => {
+    const board = await newBoard();
+    const [todo, doing] = board.lists;
+    await addCards(ann, todo.id, ["Old here"]);
+    await addCards(ann, doing.id, ["Moved in"]);
+    await addCards(ann, todo.id, ["New here"]);
+    // Created first of all, but arrives in To do last.
+    await run(
+      ann,
+      `mutation ($id: ID!, $to: ID!) { moveCard(id: $id, toListId: $to) { card { id } } }`,
+      {
+        id: await cardId(board.id, "Moved in"),
+        to: todo.id,
+      },
+    );
+    expect(await sortedTitles(todo.id, "ADDED_NEWEST")).toEqual([
+      "Moved in",
+      "New here",
+      "Old here",
+    ]);
+    expect(await sortedTitles(todo.id, "ADDED_OLDEST")).toEqual([
+      "Old here",
+      "New here",
+      "Moved in",
+    ]);
+  });
+
+  it("counts only the latest arrival for a card that left the list and came back", async () => {
+    const board = await newBoard();
+    const [todo, doing] = board.lists;
+    await addCards(ann, todo.id, ["Round trip", "Second"]);
+    const MOVE = `mutation ($id: ID!, $to: ID!) { moveCard(id: $id, toListId: $to) { card { id } } }`;
+    const id = await cardId(board.id, "Round trip");
+    await run(ann, MOVE, { id, to: doing.id });
+    await run(ann, MOVE, { id, to: todo.id });
+    expect(await sortedTitles(todo.id, "ADDED_NEWEST")).toEqual(["Round trip", "Second"]);
+  });
+
   it("only lets board members sort, and ignores archived cards", async () => {
     const board = await newBoard();
     const todo = board.lists[0].id;

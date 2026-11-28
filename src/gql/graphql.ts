@@ -19,6 +19,8 @@ export type ActivityKind =
 
 /** How sortList orders a list's cards. */
 export type CardSort =
+  | 'ADDED_NEWEST'
+  | 'ADDED_OLDEST'
   | 'CREATED_NEWEST'
   | 'CREATED_OLDEST'
   | 'DUE_DATE'
