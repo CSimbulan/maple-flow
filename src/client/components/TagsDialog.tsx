@@ -236,10 +236,10 @@ function ColorButton({
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
         slotProps={{ paper: { role: "dialog", "aria-label": label } }}
       >
-        {/* Three 36px swatches and two 8px gaps per row: a 3×3 grid. */}
-        <Box sx={{ p: 1.5, width: 3 * 36 + 2 * 8 + 24 }}>
+        <Box sx={{ p: 1.5 }}>
           <ColorSwatches
             colors={TAG_COLORS}
+            columns={3}
             value={value}
             checkColor={tagTextColor}
             onChange={(color) => {

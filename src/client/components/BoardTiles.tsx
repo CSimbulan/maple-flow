@@ -161,7 +161,12 @@ function CreateBoardDialog({ projectId, onClose }: { projectId: string; onClose:
               required
               fullWidth
             />
-            <ColorSwatches colors={BOARD_BACKGROUNDS} value={background} onChange={setBackground} />
+            <ColorSwatches
+              colors={BOARD_BACKGROUNDS}
+              columns={4}
+              value={background}
+              onChange={setBackground}
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

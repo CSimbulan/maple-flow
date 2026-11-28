@@ -191,8 +191,15 @@ export function ListColumn({
           Delete List
         </MenuItem>
         <Divider />
-        <Box sx={{ px: 2, py: 1, maxWidth: 220 }}>
-          <Typography variant="caption" color="text.secondary">
+        <Box sx={{ px: 2, py: 1 }}>
+          {/* A block with a tight line height, so the space above the label matches the menu's
+              side padding instead of growing with the body line height. */}
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            component="div"
+            sx={{ lineHeight: 1 }}
+          >
             Header Color
           </Typography>
           <Box sx={{ mt: 1 }}>
