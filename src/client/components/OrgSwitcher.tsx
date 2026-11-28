@@ -11,7 +11,8 @@ import ListItemText from "@mui/material/ListItemText";
 import ListSubheader from "@mui/material/ListSubheader";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { HOME_PATH } from "@/lib/start-page";
 import { useState } from "react";
 import { useCurrentOrg } from "../current-org";
 import { errorMessage, useNotify } from "../notify";
@@ -23,6 +24,8 @@ export function OrgSwitcher() {
   const router = useRouter();
   const notify = useNotify();
   const { orgId } = useCurrentOrg();
+  // The home page spans every workspace: the button reads "Workspaces" and looks unselected.
+  const onHome = usePathname() === HOME_PATH;
   const { data } = useQuery(WorkspacesQuery);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [creating, setCreating] = useState(false);
@@ -39,12 +42,12 @@ export function OrgSwitcher() {
         color="inherit"
         endIcon={<ExpandMoreIcon />}
         onClick={(e) => setAnchor(e.currentTarget)}
-        aria-label={`Workspace: ${current?.name ?? "choose"}`}
+        aria-label={current ? `Workspace: ${current.name}` : "Workspaces"}
         sx={{
           minWidth: 0,
           maxWidth: { xs: 150, sm: 260 },
-          bgcolor: "rgba(255,255,255,0.15)",
-          "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
+          bgcolor: onHome ? "transparent" : "rgba(255,255,255,0.15)",
+          "&:hover": { bgcolor: onHome ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.25)" },
         }}
       >
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

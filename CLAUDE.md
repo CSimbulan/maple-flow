@@ -105,10 +105,18 @@ Routes live under `/w/[orgId]/…`; `next.config.ts` redirects old `/o/…` link
 
 ### Workspace bootstrap and migration
 
-`/boards` (where sign-in and `/` land) runs `ensureWorkspace(userId)`: a user without a workspace
-gets one named "Personal" with a "General" project, and boards from before projects existed
-(`projectId: null`) move into the owner's workspace, keeping guests. Then it redirects to the
-workspace in the `mf-org` cookie (if still a member) or the first one.
+Sign-in lands on `/`, which redirects through `startPath(userId, cookie)` in
+`src/server/db/workspace.ts` (via `goToStartPage` in `src/server/start.ts`); `/boards` is an old
+alias of `/`. `startPath` first runs `ensureWorkspace(userId)`: a user without a workspace gets
+one named "Personal" with a "General" project, and boards from before projects existed
+(`projectId: null`) move into the owner's workspace, keeping guests. Then it follows the user's
+`startPage` preference (`src/lib/start-page.ts`; unset means HOME, set with the `setStartPage`
+mutation, no UI yet): HOME → `/home`, LAST_WORKSPACE → the workspace in the `mf-org` cookie (if
+still a member) or the first one.
+
+`/home` is the user's own page (workspaces, recent boards, cards assigned to them, boards shared
+with them). It has no current workspace: `AppFrame` sets none there, so the switcher reads
+"Workspaces" and the sidebar shows only Home and Shared with Me. The logo links to `/home`.
 
 Other lazy migrations: boards with no `tags` field get `DEFAULT_TAGS` (`src/lib/tags.ts`) the
 first time their tags are read (`tagsOf` in `graphql/tags.ts`; an empty array means the user
@@ -139,6 +147,8 @@ replaced by tags and are no longer read.
   user's data.
 - Client components also render on the server with a never-resolving link, so pages show their
   loading state and fetch in the browser (no SSR data).
+- `/b/<id>?card=<cardId>` opens that card's dialog when the board loads (used by the home
+  page's Assigned to Me); closing the dialog drops the parameter.
 - Codegen uses the client preset with fragment masking off; import typed documents from
   `src/client/operations.ts`.
 - Brand colors are in `src/brand.ts`; every color behind white text keeps ≥4.5:1 contrast.
@@ -175,7 +185,11 @@ The owner's choices; follow them in new UI and ask before departing from them.
   client components; rendering them from server components caused hydration mismatches.
 - **Apollo Client 4**: hooks come from `@apollo/client/react`.
 - **Mongoose 9**: models use explicit TypeScript interfaces; `InferSchemaType` made `tsc` run out
-  of memory. Use `{ returnDocument: "after" }`.
+  of memory. Use `{ returnDocument: "after" }`. `models.ts` registers models with
+  `overwriteModels: true` because the file runs more than once per server (dev reloads; page code
+  and API code each load a copy). Don't switch back to `deleteModel()`: it drops the model's
+  collection from the connection, so after an Atlas reconnect the other copy buffers every query
+  until "buffering timed out after 10000ms".
 - **graphql** is pinned to 16. Vitest inlines `@pothos/*` (`vitest.config.mts`); otherwise Pothos
   loads the CJS build of graphql and the schema fails with "another module or realm".
 - **Zod 4**: `z.email()`, `z.iso.date()`, `z.prettifyError()`.

@@ -23,7 +23,8 @@ import { errorMessage, useNotify } from "../notify";
 import { CreateBoardMutation } from "../operations";
 import { ColorSwatches } from "./ColorSwatches";
 
-type Tile = { id: string; title: string; background: string };
+/** A board tile: its title, and optionally a few short lines of context under it. */
+type Tile = { id: string; title: string; background: string; caption?: string[] };
 
 export const tileSx = {
   height: { xs: 80, sm: 96 },
@@ -99,6 +100,11 @@ export function BoardTiles({
               href={`/b/${b.id}`}
               sx={{
                 ...tileSx,
+                // With a caption, grow past the usual height rather than overlap the title.
+                ...(b.caption?.length && { height: "auto", minHeight: tileSx.height, gap: 1 }),
+                flexDirection: "column",
+                justifyContent: "space-between",
+                alignItems: "stretch",
                 bgcolor: b.background,
                 color: "#fff",
                 "&:hover": { filter: "brightness(0.92)" },
@@ -109,15 +115,24 @@ export function BoardTiles({
                   fontWeight: 700,
                   textAlign: "left",
                   overflowWrap: "anywhere",
-                  // Long titles stop at two lines so they stay inside the tile.
+                  // Long titles stop at two lines (one with a caption) so they stay inside the tile.
                   display: "-webkit-box",
-                  WebkitLineClamp: 2,
+                  WebkitLineClamp: b.caption?.length ? 1 : 2,
                   WebkitBoxOrient: "vertical",
                   overflow: "hidden",
                 }}
               >
                 {b.title}
               </Typography>
+              {b.caption && b.caption.length > 0 && (
+                <Box sx={{ textAlign: "left", opacity: 0.9, minWidth: 0 }}>
+                  {b.caption.map((line) => (
+                    <Typography key={line} variant="caption" noWrap component="p">
+                      {line}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
             </ButtonBase>
           ))}
       {projectId && <AddTile label="Create New Board" onClick={() => setOpen(true)} />}

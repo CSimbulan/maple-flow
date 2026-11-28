@@ -1,11 +1,14 @@
 import { Types } from "mongoose";
+import { DEFAULT_START_PAGE, HOME_PATH } from "../../lib/start-page";
 import {
   BoardModel,
   OrganizationModel,
   ProjectModel,
+  UserModel,
   type MemberSince,
   type OrganizationDoc,
   type ProjectDoc,
+  type UserDoc,
 } from "./models";
 
 export const DEFAULT_PROJECT_NAME = "General";
@@ -97,4 +100,21 @@ export async function joinDatesOf(org: OrganizationDoc): Promise<MemberSince[]> 
     org.memberSince = [...(org.memberSince ?? []), ...missing];
   }
   return org.memberIds.map((id) => known.get(id.toString())!);
+}
+
+/**
+ * Where a signed-in user starts (after sign-in, or opening the site root): their home page, or
+ * the workspace they used last, depending on their start page preference. `lastOrgId` is the
+ * workspace remembered in their browser (the ORG_COOKIE). Makes sure they have a workspace
+ * first, like every entry point.
+ */
+export async function startPath(userId: string, lastOrgId?: string | null): Promise<string> {
+  const orgs = await ensureWorkspace(userId);
+  const user = await UserModel.findById(userId).select({ startPage: 1 }).lean<UserDoc>();
+  const page = user?.startPage ?? DEFAULT_START_PAGE;
+  if (page === "LAST_WORKSPACE") {
+    const org = orgs.find((o) => o._id.toString() === lastOrgId) ?? orgs[0];
+    return `/w/${org._id.toString()}`;
+  }
+  return HOME_PATH;
 }

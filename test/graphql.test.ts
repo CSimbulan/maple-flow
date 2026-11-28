@@ -12,7 +12,7 @@ import {
   OrganizationModel,
   UserModel,
 } from "../src/server/db/models";
-import { ensureWorkspace } from "../src/server/db/workspace";
+import { ensureWorkspace, startPath } from "../src/server/db/workspace";
 import { createContext } from "../src/server/graphql/context";
 import { schema } from "../src/server/graphql/schema";
 
@@ -1422,5 +1422,229 @@ describe("moving all cards", () => {
     expect(await errorCode(run(bob, MOVE_ALL, { from: todo.id, to: board.lists[1].id }))).toBe(
       "NOT_FOUND",
     );
+  });
+});
+
+describe("home page", () => {
+  const RECENT = `{ recentBoards { title lastActivityAt } }`;
+  const ASSIGNED = `{ assignedCards { title dueDate board { title } list { title } } }`;
+  const addMember = async (org: string, email = "bob@example.com") =>
+    run(
+      ann,
+      `mutation ($o: ID!, $e: String!) { addWorkspaceMember(workspaceId: $o, email: $e) { id } }`,
+      {
+        o: org,
+        e: email,
+      },
+    );
+  const newBoardTitled = async (title: string, userId = ann) => {
+    const { createBoard } = await run(
+      userId,
+      `mutation ($p: ID!, $t: String!) { createBoard(projectId: $p, title: $t) { id lists { id } } }`,
+      { p: await projectOf(userId), t: title },
+    );
+    return createBoard as { id: string; lists: { id: string }[] };
+  };
+
+  it("lists boards the viewer can open, most recent card activity first", async () => {
+    const older = await newBoardTitled("Older");
+    await newBoardTitled("Newer");
+    // Card work on the older board makes it the most recent.
+    await addCards(ann, older.lists[0].id, ["Work"]);
+    const titles = (await run(ann, RECENT)).recentBoards.map((b: { title: string }) => b.title);
+    expect(titles).toEqual(["Older", "Newer"]);
+    // Bob isn't in Ann's workspace or a guest, so he sees only his own (none yet).
+    await projectOf(bob);
+    expect((await run(bob, RECENT)).recentBoards).toEqual([]);
+  });
+
+  it("includes boards the viewer is a guest on", async () => {
+    const board = await newBoardTitled("Guest board");
+    await projectOf(bob);
+    await run(
+      ann,
+      `mutation ($b: ID!) { addBoardMember(boardId: $b, email: "bob@example.com") { id } }`,
+      {
+        b: board.id,
+      },
+    );
+    const titles = (await run(bob, RECENT)).recentBoards.map((b: { title: string }) => b.title);
+    expect(titles).toEqual(["Guest board"]);
+  });
+
+  it("lists active cards assigned to the viewer, due soonest first", async () => {
+    const org = await orgOf(ann);
+    await addMember(org);
+    const board = await newBoardTitled("Launch");
+    const [todo, doing, done] = board.lists;
+    await addCards(ann, todo.id, [
+      "Later",
+      "Soon",
+      "No date",
+      "Not mine",
+      "Archived",
+      "In archived list",
+    ]);
+    await addCards(ann, done.id, ["Done list card"]);
+    const assign = async (title: string, dueDate: string | null, who = [bob]) =>
+      run(
+        ann,
+        `mutation ($id: ID!, $a: [ID!], $d: String) { updateCard(id: $id, assigneeIds: $a, dueDate: $d) { id } }`,
+        {
+          id: await cardId(board.id, title),
+          a: who,
+          d: dueDate,
+        },
+      );
+    await assign("Later", "2026-12-20");
+    await assign("Soon", "2026-12-01");
+    await assign("No date", null);
+    await assign("Not mine", "2026-12-02", [ann]);
+    await assign("Archived", "2026-12-01");
+    await assign("Done list card", "2026-12-03");
+    await run(ann, `mutation ($id: ID!) { archiveCard(id: $id) { id } }`, {
+      id: await cardId(board.id, "Archived"),
+    });
+    await assign("In archived list", "2026-12-01");
+    await run(
+      ann,
+      `mutation ($id: ID!, $to: ID!) { moveCard(id: $id, toListId: $to) { card { id } } }`,
+      {
+        id: await cardId(board.id, "In archived list"),
+        to: doing.id,
+      },
+    );
+    await run(ann, `mutation ($id: ID!) { archiveList(id: $id) { id } }`, { id: doing.id });
+
+    const cards = (await run(bob, ASSIGNED)).assignedCards;
+    expect(cards.map((c: { title: string }) => c.title)).toEqual([
+      "Soon",
+      "Done list card",
+      "Later",
+      "No date",
+    ]);
+    expect(cards[0]).toMatchObject({ board: { title: "Launch" }, list: { title: "To do" } });
+
+    // After leaving the workspace, Bob loses the board and its cards.
+    await run(
+      ann,
+      `mutation ($o: ID!, $u: ID!) { removeWorkspaceMember(workspaceId: $o, userId: $u) { id } }`,
+      {
+        o: org,
+        u: bob,
+      },
+    );
+    expect((await run(bob, ASSIGNED)).assignedCards).toEqual([]);
+  });
+
+  it("stores the start page preference, home by default", async () => {
+    expect((await run(ann, `{ me { startPage } }`)).me.startPage).toBe("HOME");
+    const set = await run(ann, `mutation { setStartPage(page: LAST_WORKSPACE) { startPage } }`);
+    expect(set.setStartPage.startPage).toBe("LAST_WORKSPACE");
+    expect((await run(ann, `{ me { startPage } }`)).me.startPage).toBe("LAST_WORKSPACE");
+  });
+
+  it("sends people to their start page, making sure they have a workspace", async () => {
+    // A brand-new user gets "Personal" and lands on home.
+    expect(await startPath(bob)).toBe("/home");
+    const [personal] = await OrganizationModel.find({ memberIds: bob }).lean();
+    expect(personal.name).toBe("Personal");
+
+    await UserModel.updateOne({ _id: bob }, { $set: { startPage: "LAST_WORKSPACE" } });
+    const second = (await run(bob, `mutation { createWorkspace(name: "Second") { id } }`))
+      .createWorkspace.id as string;
+    expect(await startPath(bob, second)).toBe(`/w/${second}`);
+    // No cookie, or one for a workspace they've left: their first workspace.
+    expect(await startPath(bob)).toBe(`/w/${personal._id.toString()}`);
+    expect(await startPath(bob, new mongoose.Types.ObjectId().toString())).toBe(
+      `/w/${personal._id.toString()}`,
+    );
+  });
+});
+
+describe("home page at a glance", () => {
+  const ACTIVITY = `query ($tz: String!, $days: Int) { myActivity(timeZone: $tz, days: $days) { date count } }`;
+
+  it("counts every assigned card, not just the first 50", async () => {
+    const board = await newBoard();
+    const titles = Array.from({ length: 55 }, (_, i) => `Card ${i}`);
+    await addCards(ann, board.lists[0].id, titles);
+    const ids = (await CardModel.find({ boardId: board.id }).lean()).map((c) => c._id);
+    await CardModel.updateMany(
+      { _id: { $in: ids.slice(0, 52) } },
+      { $set: { assigneeIds: [ann] } },
+    );
+    const data = await run(ann, `{ assignedCardCount assignedCards { id } }`);
+    expect(data.assignedCardCount).toBe(52);
+    expect(data.assignedCards).toHaveLength(50);
+    await projectOf(bob);
+    expect((await run(bob, `{ assignedCardCount }`)).assignedCardCount).toBe(0);
+  });
+
+  it("counts the viewer's own activity and comments per day in their time zone", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    const a = await cardId(board.id, "A");
+    await run(ann, `mutation ($c: ID!) { addComment(cardId: $c, text: "Hi") { id } }`, { c: a });
+    // Another user's action on the same card doesn't count for Ann.
+    await ActivityModel.create({
+      cardId: a,
+      boardId: board.id,
+      actorId: bob,
+      kind: "DESCRIPTION",
+    });
+
+    const days = (await run(ann, ACTIVITY, { tz: "America/Toronto" })).myActivity as {
+      date: string;
+      count: number;
+    }[];
+    expect(days).toHaveLength(14);
+    // Created the card and commented.
+    expect(days.at(-1)!.count).toBe(2);
+    expect(days.slice(0, -1).every((d) => d.count === 0)).toBe(true);
+    expect(days.at(-1)!.date).toBe(
+      new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date()),
+    );
+  });
+
+  it("counts one save that logs several entries as one action", async () => {
+    const board = await newBoard();
+    await run(
+      ann,
+      `mutation ($l: ID!, $a: [ID!]) {
+        createCard(listId: $l, title: "Detailed", dueDate: "2026-12-03", priority: HIGH, assigneeIds: $a) { id }
+      }`,
+      { l: board.lists[0].id, a: [ann] },
+    );
+    expect(await ActivityModel.countDocuments({})).toBe(4);
+    const days = (await run(ann, ACTIVITY, { tz: "UTC" })).myActivity as { count: number }[];
+    expect(days.at(-1)!.count).toBe(1);
+  });
+
+  it("puts an action on the viewer's local day", async () => {
+    const board = await newBoard();
+    await addCards(ann, board.lists[0].id, ["A"]);
+    // Move Ann's only activity entry to 20:00 UTC yesterday: still "yesterday" in Toronto
+    // (15:00), but already "today" in Tokyo (05:00 the next day).
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    yesterday.setUTCHours(20, 0, 0, 0);
+    await ActivityModel.collection.updateMany({}, { $set: { createdAt: yesterday } });
+    const dayOf = async (tz: string) => {
+      const days = (await run(ann, ACTIVITY, { tz, days: 3 })).myActivity as {
+        date: string;
+        count: number;
+      }[];
+      return days.find((d) => d.count > 0)?.date;
+    };
+    const local = (tz: string) =>
+      new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(yesterday);
+    expect(await dayOf("America/Toronto")).toBe(local("America/Toronto"));
+    expect(await dayOf("Asia/Tokyo")).toBe(local("Asia/Tokyo"));
+    expect(local("America/Toronto")).not.toBe(local("Asia/Tokyo"));
+  });
+
+  it("rejects unknown time zones", async () => {
+    await projectOf(ann);
+    expect(await errorCode(run(ann, ACTIVITY, { tz: "Mars/Olympus" }))).toBe("BAD_USER_INPUT");
   });
 });

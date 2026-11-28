@@ -1,8 +1,16 @@
-import { CardModel, ListModel, type CardDoc, type ListDoc, type UserDoc } from "../db/models";
+import {
+  CardModel,
+  ListModel,
+  type BoardDoc,
+  type CardDoc,
+  type ListDoc,
+  type UserDoc,
+} from "../db/models";
 import type { SchemaParts } from "./builder";
 import { boardAudienceIds, canManageBoard, isOrgMember, orgOfBoard } from "./permissions";
 import type { Context } from "./context";
 import { defaultListColor } from "../../lib/list-colors";
+import { DEFAULT_START_PAGE } from "../../lib/start-page";
 import { tagsOf } from "./tags";
 import { joinDatesOf } from "../db/workspace";
 
@@ -21,6 +29,12 @@ async function withColors(lists: ListDoc[]): Promise<ListDoc[]> {
   return lists.map((l, i) => (l.color ? l : { ...l, color: defaultListColor(i) }));
 }
 
+/** The later of a board's own last edit and the newest activity entry on its cards. */
+export async function lastActivityAt(ctx: Context, board: BoardDoc): Promise<Date> {
+  const activity = await ctx.loaders.lastActivityByBoard.load(board._id.toString());
+  return activity && activity > board.updatedAt ? activity : board.updatedAt;
+}
+
 /** Users by id (ObjectIds or strings), skipping any that no longer exist. */
 async function loadUsers(ctx: Context, ids: { toString(): string }[]): Promise<UserDoc[]> {
   const users = await ctx.loaders.userById.loadMany(ids.map(String));
@@ -31,6 +45,7 @@ async function loadUsers(ctx: Context, ids: { toString(): string }[]): Promise<U
 export function defineTypes({
   builder,
   UserRef,
+  StartPageEnum,
   WorkspaceRef,
   WorkspaceMemberRef,
   ProjectRef,
@@ -53,6 +68,13 @@ export function defineTypes({
       email: t.exposeString("email"),
       name: t.exposeString("name", { nullable: true }),
       image: t.exposeString("image", { nullable: true }),
+      startPage: t.field({
+        type: StartPageEnum,
+        nullable: true,
+        description: "Where they land after signing in. Only for the viewer; null for others.",
+        resolve: (u, _args, ctx) =>
+          u._id.toString() === ctx.userId ? (u.startPage ?? DEFAULT_START_PAGE) : null,
+      }),
     }),
   });
 
@@ -162,6 +184,10 @@ export function defineTypes({
           withColors(await ctx.loaders.listsByBoard.load(b._id.toString())),
       }),
       updatedAt: t.string({ resolve: (b) => b.updatedAt.toISOString() }),
+      lastActivityAt: t.string({
+        description: "The later of the board's own last edit and the newest card activity on it.",
+        resolve: async (b, _args, ctx) => (await lastActivityAt(ctx, b)).toISOString(),
+      }),
       createdAt: t.string({ resolve: (b) => b.createdAt.toISOString() }),
       tags: t.field({
         type: [TagRef],
@@ -209,6 +235,7 @@ export function defineTypes({
   builder.objectType(CardRef, {
     fields: (t) => ({
       id: t.id({ resolve: (c) => c._id.toString() }),
+      createdAt: t.string({ resolve: (c) => c.createdAt.toISOString() }),
       title: t.exposeString("title"),
       description: t.exposeString("description"),
       tags: t.field({
@@ -233,6 +260,10 @@ export function defineTypes({
       listId: t.id({ resolve: (c) => c.listId.toString() }),
       boardId: t.id({ resolve: (c) => c.boardId.toString() }),
       archived: t.exposeBoolean("archived"),
+      board: t.field({
+        type: BoardRef,
+        resolve: async (c, _args, ctx) => (await ctx.loaders.boardById.load(c.boardId.toString()))!,
+      }),
       /** The card's list, which may itself be archived. */
       list: t.field({
         type: ListRef,

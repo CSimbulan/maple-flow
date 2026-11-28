@@ -1,3 +1,11 @@
+"""How many things someone did on one day."""
+type ActivityDay {
+  count: Int!
+
+  """YYYY-MM-DD in the requested time zone."""
+  date: String!
+}
+
 """What happened to a card in a CardActivity entry."""
 enum ActivityKind {
   ARCHIVED
@@ -30,6 +38,11 @@ type Board {
   """People added to this board directly who aren't in its workspace."""
   guests: [User!]!
   id: ID!
+
+  """
+  The later of the board's own last edit and the newest card activity on it.
+  """
+  lastActivityAt: String!
   lists: [List!]!
 
   """Everyone who can open the board: workspace members plus guests."""
@@ -51,10 +64,12 @@ type Card {
   activity: [CardActivity!]!
   archived: Boolean!
   assignees: [User!]!
+  board: Board!
   boardId: ID!
 
   """Comments on the card, oldest first."""
   comments: [Comment!]!
+  createdAt: String!
   description: String!
   dueDate: String
   id: ID!
@@ -256,6 +271,9 @@ type Mutation {
   """
   restoreList(id: ID!): RestoreListPayload!
 
+  """Choose where you land after signing in."""
+  setStartPage(page: StartPage!): User!
+
   """
   Reorder a list's active cards once, for everyone. Cards can still be dragged afterwards. Not recorded in the cards' activity, like other reordering.
   """
@@ -288,12 +306,29 @@ type Project {
 }
 
 type Query {
+  """How many cards assignedCards would list without its limit."""
+  assignedCardCount: Int!
+
+  """
+  Active cards assigned to the viewer on boards they can open (not in archived lists): due soonest first, then highest priority. At most 50.
+  """
+  assignedCards: [Card!]!
   board(id: ID!): Board
 
   """A card (active or archived), or null if the viewer can't open it."""
   card(id: ID!): Card
   me: User
+
+  """
+  How many things the viewer did (card activity and comments) on each of the last `days` days in `timeZone`, oldest first, including days with none.
+  """
+  myActivity(days: Int = 14, timeZone: String!): [ActivityDay!]!
   project(id: ID!): Project
+
+  """
+  Boards the viewer can open, most recently active first (card work or board edits).
+  """
+  recentBoards(limit: Int = 8): [Board!]!
 
   """Boards the viewer was invited to as a guest, outside their workspaces."""
   sharedBoards: [Board!]!
@@ -314,6 +349,12 @@ type RestoreListPayload {
   list: List!
 }
 
+"""Where someone lands after signing in."""
+enum StartPage {
+  HOME
+  LAST_WORKSPACE
+}
+
 type Tag {
   """Hex color; tags show white text on it."""
   color: String!
@@ -326,6 +367,11 @@ type User {
   id: ID!
   image: String
   name: String
+
+  """
+  Where they land after signing in. Only for the viewer; null for others.
+  """
+  startPage: StartPage
 }
 
 type Workspace {

@@ -48,7 +48,7 @@ export function NotFound({ what }: { what: string }) {
       <Alert
         severity="info"
         action={
-          <Button component={Link} href="/boards" color="inherit" size="small">
+          <Button component={Link} href="/home" color="inherit" size="small">
             Go Home
           </Button>
         }
@@ -59,7 +59,7 @@ export function NotFound({ what }: { what: string }) {
   );
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** /w/[orgId]: the organization's projects. */
 export function OrgOverview({ orgId }: { orgId: string }) {

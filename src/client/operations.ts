@@ -745,6 +745,70 @@ export const MeQuery = graphql(`
   query Me {
     me {
       ...UserFields
+      startPage
+    }
+  }
+`);
+
+export const SetStartPageMutation = graphql(`
+  mutation SetStartPage($page: StartPage!) {
+    setStartPage(page: $page) {
+      id
+      startPage
+    }
+  }
+`);
+
+// ---- Home ----
+
+export const HomeQuery = graphql(`
+  query Home($timeZone: String!) {
+    assignedCardCount
+    myActivity(timeZone: $timeZone) {
+      date
+      count
+    }
+    me {
+      id
+      name
+      email
+    }
+    workspaces {
+      ...WorkspaceSummaryFields
+      members {
+        id
+      }
+      projects {
+        id
+      }
+    }
+    recentBoards {
+      ...BoardTileFields
+      lastActivityAt
+      project {
+        id
+        name
+        workspace {
+          id
+          name
+        }
+      }
+    }
+    assignedCards {
+      ...CardFields
+      createdAt
+      list {
+        id
+        title
+      }
+      board {
+        id
+        title
+        background
+      }
+    }
+    sharedBoards {
+      ...BoardTileFields
     }
   }
 `);

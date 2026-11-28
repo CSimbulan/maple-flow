@@ -64,7 +64,9 @@ type Documents = {
     "\n  mutation AddComment($cardId: ID!, $text: String!) {\n    addComment(cardId: $cardId, text: $text) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": typeof types.AddCommentDocument,
     "\n  mutation UpdateComment($id: ID!, $text: String!) {\n    updateComment(id: $id, text: $text) {\n      ...CommentFields\n    }\n  }\n": typeof types.UpdateCommentDocument,
     "\n  mutation DeleteComment($id: ID!) {\n    deleteComment(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": typeof types.DeleteCommentDocument,
-    "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n": typeof types.MeDocument,
+    "\n  query Me {\n    me {\n      ...UserFields\n      startPage\n    }\n  }\n": typeof types.MeDocument,
+    "\n  mutation SetStartPage($page: StartPage!) {\n    setStartPage(page: $page) {\n      id\n      startPage\n    }\n  }\n": typeof types.SetStartPageDocument,
+    "\n  query Home($timeZone: String!) {\n    assignedCardCount\n    myActivity(timeZone: $timeZone) {\n      date\n      count\n    }\n    me {\n      id\n      name\n      email\n    }\n    workspaces {\n      ...WorkspaceSummaryFields\n      members {\n        id\n      }\n      projects {\n        id\n      }\n    }\n    recentBoards {\n      ...BoardTileFields\n      lastActivityAt\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n    }\n    assignedCards {\n      ...CardFields\n      createdAt\n      list {\n        id\n        title\n      }\n      board {\n        id\n        title\n        background\n      }\n    }\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n": typeof types.HomeDocument,
 };
 const documents: Documents = {
     "\n  fragment UserFields on User {\n    id\n    name\n    email\n    image\n  }\n": types.UserFieldsFragmentDoc,
@@ -117,7 +119,9 @@ const documents: Documents = {
     "\n  mutation AddComment($cardId: ID!, $text: String!) {\n    addComment(cardId: $cardId, text: $text) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": types.AddCommentDocument,
     "\n  mutation UpdateComment($id: ID!, $text: String!) {\n    updateComment(id: $id, text: $text) {\n      ...CommentFields\n    }\n  }\n": types.UpdateCommentDocument,
     "\n  mutation DeleteComment($id: ID!) {\n    deleteComment(id: $id) {\n      id\n      comments {\n        ...CommentFields\n      }\n    }\n  }\n": types.DeleteCommentDocument,
-    "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n": types.MeDocument,
+    "\n  query Me {\n    me {\n      ...UserFields\n      startPage\n    }\n  }\n": types.MeDocument,
+    "\n  mutation SetStartPage($page: StartPage!) {\n    setStartPage(page: $page) {\n      id\n      startPage\n    }\n  }\n": types.SetStartPageDocument,
+    "\n  query Home($timeZone: String!) {\n    assignedCardCount\n    myActivity(timeZone: $timeZone) {\n      date\n      count\n    }\n    me {\n      id\n      name\n      email\n    }\n    workspaces {\n      ...WorkspaceSummaryFields\n      members {\n        id\n      }\n      projects {\n        id\n      }\n    }\n    recentBoards {\n      ...BoardTileFields\n      lastActivityAt\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n    }\n    assignedCards {\n      ...CardFields\n      createdAt\n      list {\n        id\n        title\n      }\n      board {\n        id\n        title\n        background\n      }\n    }\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n": types.HomeDocument,
 };
 
 /**
@@ -337,7 +341,15 @@ export function graphql(source: "\n  mutation DeleteComment($id: ID!) {\n    del
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      ...UserFields\n    }\n  }\n"];
+export function graphql(source: "\n  query Me {\n    me {\n      ...UserFields\n      startPage\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      ...UserFields\n      startPage\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SetStartPage($page: StartPage!) {\n    setStartPage(page: $page) {\n      id\n      startPage\n    }\n  }\n"): (typeof documents)["\n  mutation SetStartPage($page: StartPage!) {\n    setStartPage(page: $page) {\n      id\n      startPage\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Home($timeZone: String!) {\n    assignedCardCount\n    myActivity(timeZone: $timeZone) {\n      date\n      count\n    }\n    me {\n      id\n      name\n      email\n    }\n    workspaces {\n      ...WorkspaceSummaryFields\n      members {\n        id\n      }\n      projects {\n        id\n      }\n    }\n    recentBoards {\n      ...BoardTileFields\n      lastActivityAt\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n    }\n    assignedCards {\n      ...CardFields\n      createdAt\n      list {\n        id\n        title\n      }\n      board {\n        id\n        title\n        background\n      }\n    }\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n"): (typeof documents)["\n  query Home($timeZone: String!) {\n    assignedCardCount\n    myActivity(timeZone: $timeZone) {\n      date\n      count\n    }\n    me {\n      id\n      name\n      email\n    }\n    workspaces {\n      ...WorkspaceSummaryFields\n      members {\n        id\n      }\n      projects {\n        id\n      }\n    }\n    recentBoards {\n      ...BoardTileFields\n      lastActivityAt\n      project {\n        id\n        name\n        workspace {\n          id\n          name\n        }\n      }\n    }\n    assignedCards {\n      ...CardFields\n      createdAt\n      list {\n        id\n        title\n      }\n      board {\n        id\n        title\n        background\n      }\n    }\n    sharedBoards {\n      ...BoardTileFields\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

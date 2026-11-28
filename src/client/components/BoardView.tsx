@@ -28,6 +28,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import {
   columnsOf,
@@ -95,7 +96,7 @@ export function BoardView({ boardId }: { boardId: string }) {
         severity="info"
         sx={{ m: 2 }}
         action={
-          <Button component={Link} href="/boards" color="inherit" size="small">
+          <Button component={Link} href="/home" color="inherit" size="small">
             Your Boards
           </Button>
         }
@@ -118,7 +119,16 @@ function BoardCanvas({ board }: { board: Board }) {
   const [moveCard] = useMutation(MoveCardMutation);
   const [moveList] = useMutation(MoveListMutation);
   const [createList] = useMutation(CreateListMutation);
-  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  // A ?card=<id> link (from the home page's Assigned to Me) opens that card when the board loads.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [openCardId, setOpenCardId] = useState<string | null>(() => searchParams.get("card"));
+  const closeCard = () => {
+    setOpenCardId(null);
+    // Drop the link's ?card= so reloading the board doesn't open the card again.
+    if (searchParams.has("card")) router.replace(pathname, { scroll: false });
+  };
   // The list "Add Card" was clicked in, while its new-card dialog is open.
   const [newCardList, setNewCardList] = useState<{ id: string; title: string } | null>(null);
   // Color for the next new list: the default for its place unless one was picked.
@@ -337,12 +347,7 @@ function BoardCanvas({ board }: { board: Board }) {
         </DragOverlay>
       </DndContext>
       {openCard && (
-        <CardDialog
-          card={openCard}
-          members={board.members}
-          tags={board.tags}
-          onClose={() => setOpenCardId(null)}
-        />
+        <CardDialog card={openCard} members={board.members} tags={board.tags} onClose={closeCard} />
       )}
       {newCardList && (
         <CardDialog

@@ -13,6 +13,7 @@ import {
 } from "../db/models";
 import { CARD_SORTS } from "../../lib/card-sort";
 import { PRIORITIES } from "../../lib/priority";
+import { START_PAGES } from "../../lib/start-page";
 import type { Context } from "./context";
 
 /**
@@ -46,6 +47,10 @@ export function createBuilder() {
       description: "How urgent a card is, from HIGHEST to LOWEST.",
       values: PRIORITIES,
     }),
+    StartPageEnum: builder.enumType("StartPage", {
+      description: "Where someone lands after signing in.",
+      values: START_PAGES,
+    }),
     CardSortEnum: builder.enumType("CardSort", {
       description: "How sortList orders a list's cards.",
       values: CARD_SORTS,
@@ -57,6 +62,7 @@ export function createBuilder() {
       description: "What happened to a card in a CardActivity entry.",
       values: ACTIVITY_KINDS,
     }),
+    ActivityDayRef: builder.objectRef<{ date: string; count: number }>("ActivityDay"),
     MoveCardsPayloadRef: builder.objectRef<{ fromList: ListDoc; toList: ListDoc; moved: number }>(
       "MoveCardsPayload",
     ),

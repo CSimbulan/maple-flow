@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import AddIcon from "@mui/icons-material/Add";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
+import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import PeopleOutlineIcon from "@mui/icons-material/PeopleOutlined";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
@@ -17,6 +18,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { HOME_PATH } from "@/lib/start-page";
 import { useCurrentOrg } from "../current-org";
 import { errorMessage, useNotify } from "../notify";
 import { CreateProjectMutation, WorkspaceQuery, SharedBoardsQuery } from "../operations";
@@ -48,6 +50,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <Box component="nav" aria-label="Workspace" sx={{ overflowY: "auto", height: "100%" }}>
       <List dense>
+        <ListItemButton {...item(HOME_PATH, true)}>
+          <ListItemIcon>
+            <HomeOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Home" />
+        </ListItemButton>
         {orgId && !org && loading && (
           <Box sx={{ px: 2, py: 1 }}>
             <Skeleton width="70%" />
@@ -102,7 +110,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         {sharedBoards.length > 0 && (
           <>
-            <ListSubheader sx={{ mt: 1 }}>Shared with you</ListSubheader>
+            <ListSubheader sx={{ mt: 1 }}>Shared with Me</ListSubheader>
             {sharedBoards.map((b) => (
               <ListItemButton key={b.id} {...item(`/b/${b.id}`)}>
                 <ListItemIcon>

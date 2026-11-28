@@ -13,8 +13,10 @@ import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BRAND, BRAND_GRADIENT } from "@/brand";
+import { HOME_PATH } from "@/lib/start-page";
 import { getApolloClient } from "../apollo/client";
 import { CurrentOrgContext, rememberOrg } from "../current-org";
 import { OrgSwitcher } from "./OrgSwitcher";
@@ -53,8 +55,10 @@ export function AppFrame({
   children: ReactNode;
 }) {
   // The URL's organization wins; pages without one in the URL (boards) report theirs instead.
+  // The home page spans every workspace, so it has none.
   const [reportedOrgId, setOrgId] = useState<string | null>(null);
-  const orgId = initialOrgId ?? reportedOrgId;
+  const onHome = usePathname() === HOME_PATH;
+  const orgId = onHome ? null : (initialOrgId ?? reportedOrgId);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
   const current = useMemo(() => ({ orgId, setOrgId }), [orgId]);
@@ -89,7 +93,7 @@ export function AppFrame({
               {/* Logo and name go home together; phones show only the logo. */}
               <Box
                 component={Link}
-                href="/boards"
+                href={HOME_PATH}
                 aria-label="Maple Flow"
                 sx={{
                   display: "flex",

@@ -239,7 +239,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
           try {
             await deleteOrg({ variables: { id: org.id } });
             notify(`Deleted “${org.name}”`, "success");
-            router.push("/boards");
+            router.push("/home");
           } catch (err) {
             notify(errorMessage(err));
           }
@@ -261,7 +261,7 @@ export function OrgSettings({ orgId }: { orgId: string }) {
           try {
             await leaveOrg({ variables: { workspaceId: org.id, userId: myId } });
             notify(`You left “${org.name}”`, "success");
-            router.push("/boards");
+            router.push("/home");
           } catch (err) {
             notify(errorMessage(err));
           }

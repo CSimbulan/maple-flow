@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
+import { goToStartPage } from "@/server/start";
 import { auth } from "@/server/auth/config";
 
-export default async function Home() {
+/** The site root: signed-in people go to their start page (see startPath), others sign in. */
+export default async function Root() {
   const session = await auth();
-  redirect(session?.user?.id ? "/boards" : "/signin");
+  if (!session?.user?.id) redirect("/signin");
+  await goToStartPage(session.user.id);
 }

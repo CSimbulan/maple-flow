@@ -75,7 +75,7 @@ export function BoardHeader({ board }: { board: Board }) {
         },
       });
       notify(`Deleted “${board.title}”`, "success");
-      router.push(projectHref ?? "/boards");
+      router.push(projectHref ?? "/home");
     } catch (err) {
       notify(errorMessage(err));
     }

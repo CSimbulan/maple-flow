@@ -1,6 +1,7 @@
 import DataLoader from "dataloader";
 import { Types } from "mongoose";
 import {
+  ActivityModel,
   BoardModel,
   CardModel,
   ListModel,
@@ -86,6 +87,15 @@ export function createLoaders() {
         (l) => l.boardId,
       ),
     ),
+    /** Time of the newest activity entry on each board (card work), or null if none. */
+    lastActivityByBoard: new DataLoader<string, Date | null>(async (keys) => {
+      const rows = await ActivityModel.aggregate<{ _id: Types.ObjectId; last: Date }>([
+        { $match: { boardId: { $in: ids(keys) } } },
+        { $group: { _id: "$boardId", last: { $max: "$createdAt" } } },
+      ]);
+      const map = new Map(rows.map((r) => [r._id.toString(), r.last]));
+      return keys.map((k) => map.get(k) ?? null);
+    }),
     cardsByList: new DataLoader<string, CardDoc[]>(async (keys) =>
       groupBy(
         keys,

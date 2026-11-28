@@ -20,7 +20,7 @@ const ERRORS: Record<string, string> = {
 async function signInWith(provider: string, options: Record<string, unknown> = {}) {
   "use server";
   try {
-    await signIn(provider, { ...options, redirectTo: "/boards" });
+    await signIn(provider, { ...options, redirectTo: "/" });
   } catch (err) {
     // signIn signals success by throwing a redirect; only handle real auth failures here.
     if (err instanceof AuthError) redirect(`/signin?error=${err.type}`);
@@ -33,7 +33,7 @@ export default async function SignInPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  if ((await auth())?.user?.id) redirect("/boards");
+  if ((await auth())?.user?.id) redirect("/");
   const { error } = await searchParams;
   const nothingConfigured = oauthProviders.length === 0 && !devLoginEnabled;
 
