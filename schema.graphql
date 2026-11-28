@@ -103,6 +103,19 @@ type CardActivity {
   to: String
 }
 
+"""How sortList orders a list's cards."""
+enum CardSort {
+  CREATED_NEWEST
+  CREATED_OLDEST
+  DUE_DATE
+  FEWEST_ASSIGNEES
+  MOST_COMMENTS
+  PRIORITY
+  TITLE
+  UPDATED_NEWEST
+  UPDATED_OLDEST
+}
+
 type Comment {
   author: User
   createdAt: String!
@@ -226,6 +239,11 @@ type Mutation {
   Un-archive a list, with the cards it had, at the end of the board's lists. Cards archived on their own stay archived.
   """
   restoreList(id: ID!): RestoreListPayload!
+
+  """
+  Reorder a list's active cards once, for everyone. Cards can still be dragged afterwards. Not recorded in the cards' activity, like other reordering.
+  """
+  sortList(by: CardSort!, id: ID!): List!
   updateBoard(background: String, id: ID!, title: String): Board!
   updateCard(assigneeIds: [ID!], description: String, dueDate: String, id: ID!, priority: Priority, tagIds: [ID!], title: String): Card!
 

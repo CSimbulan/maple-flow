@@ -11,6 +11,7 @@ import {
   type TagDoc,
   type UserDoc,
 } from "../db/models";
+import { CARD_SORTS } from "../../lib/card-sort";
 import { PRIORITIES } from "../../lib/priority";
 import type { Context } from "./context";
 
@@ -43,6 +44,10 @@ export function createBuilder() {
     PriorityEnum: builder.enumType("Priority", {
       description: "How urgent a card is, from HIGHEST to LOWEST.",
       values: PRIORITIES,
+    }),
+    CardSortEnum: builder.enumType("CardSort", {
+      description: "How sortList orders a list's cards.",
+      values: CARD_SORTS,
     }),
     CommentRef: builder.objectRef<CommentDoc>("Comment"),
     ActivityRef: builder.objectRef<ActivityDoc>("CardActivity"),

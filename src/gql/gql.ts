@@ -32,6 +32,7 @@ type Documents = {
     "\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n": typeof types.RenameListDocument,
     "\n  mutation UpdateListColor($id: ID!, $color: String!) {\n    updateListColor(id: $id, color: $color) {\n      id\n      color\n    }\n  }\n": typeof types.UpdateListColorDocument,
     "\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n": typeof types.MoveListDocument,
+    "\n  mutation SortList($id: ID!, $by: CardSort!) {\n    sortList(id: $id, by: $by) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n": typeof types.SortListDocument,
     "\n  mutation ArchiveList($id: ID!) {\n    archiveList(id: $id) {\n      id\n      lists {\n        id\n      }\n    }\n  }\n": typeof types.ArchiveListDocument,
     "\n  mutation CreateCard(\n    $listId: ID!\n    $title: String!\n    $description: String\n    $tagIds: [ID!]\n    $dueDate: String\n    $priority: Priority\n    $assigneeIds: [ID!]\n  ) {\n    createCard(\n      listId: $listId\n      title: $title\n      description: $description\n      tagIds: $tagIds\n      dueDate: $dueDate\n      priority: $priority\n      assigneeIds: $assigneeIds\n    ) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n": typeof types.CreateCardDocument,
     "\n  mutation UpdateCard(\n    $id: ID!\n    $title: String\n    $description: String\n    $tagIds: [ID!]\n    $dueDate: String\n    $priority: Priority\n    $assigneeIds: [ID!]\n  ) {\n    updateCard(\n      id: $id\n      title: $title\n      description: $description\n      tagIds: $tagIds\n      dueDate: $dueDate\n      priority: $priority\n      assigneeIds: $assigneeIds\n    ) {\n      ...CardFields\n    }\n  }\n": typeof types.UpdateCardDocument,
@@ -83,6 +84,7 @@ const documents: Documents = {
     "\n  mutation RenameList($id: ID!, $title: String!) {\n    renameList(id: $id, title: $title) {\n      id\n      title\n    }\n  }\n": types.RenameListDocument,
     "\n  mutation UpdateListColor($id: ID!, $color: String!) {\n    updateListColor(id: $id, color: $color) {\n      id\n      color\n    }\n  }\n": types.UpdateListColorDocument,
     "\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n": types.MoveListDocument,
+    "\n  mutation SortList($id: ID!, $by: CardSort!) {\n    sortList(id: $id, by: $by) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n": types.SortListDocument,
     "\n  mutation ArchiveList($id: ID!) {\n    archiveList(id: $id) {\n      id\n      lists {\n        id\n      }\n    }\n  }\n": types.ArchiveListDocument,
     "\n  mutation CreateCard(\n    $listId: ID!\n    $title: String!\n    $description: String\n    $tagIds: [ID!]\n    $dueDate: String\n    $priority: Priority\n    $assigneeIds: [ID!]\n  ) {\n    createCard(\n      listId: $listId\n      title: $title\n      description: $description\n      tagIds: $tagIds\n      dueDate: $dueDate\n      priority: $priority\n      assigneeIds: $assigneeIds\n    ) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n": types.CreateCardDocument,
     "\n  mutation UpdateCard(\n    $id: ID!\n    $title: String\n    $description: String\n    $tagIds: [ID!]\n    $dueDate: String\n    $priority: Priority\n    $assigneeIds: [ID!]\n  ) {\n    updateCard(\n      id: $id\n      title: $title\n      description: $description\n      tagIds: $tagIds\n      dueDate: $dueDate\n      priority: $priority\n      assigneeIds: $assigneeIds\n    ) {\n      ...CardFields\n    }\n  }\n": types.UpdateCardDocument,
@@ -202,6 +204,10 @@ export function graphql(source: "\n  mutation UpdateListColor($id: ID!, $color: 
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation MoveList($id: ID!, $beforeId: ID, $afterId: ID) {\n    moveList(id: $id, beforeId: $beforeId, afterId: $afterId) {\n      id\n      lists {\n        id\n        position\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SortList($id: ID!, $by: CardSort!) {\n    sortList(id: $id, by: $by) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation SortList($id: ID!, $by: CardSort!) {\n    sortList(id: $id, by: $by) {\n      id\n      cards {\n        ...CardFields\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

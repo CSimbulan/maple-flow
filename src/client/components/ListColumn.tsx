@@ -5,12 +5,14 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import AddIcon from "@mui/icons-material/Add";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
+import ListItemText from "@mui/material/ListItemText";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -18,7 +20,13 @@ import { useState } from "react";
 import type { BoardCard, BoardList } from "../board-moves";
 import { useDeleteList } from "../deletes";
 import { errorMessage, useNotify } from "../notify";
-import { ArchiveListMutation, RenameListMutation, UpdateListColorMutation } from "../operations";
+import {
+  ArchiveListMutation,
+  RenameListMutation,
+  SortListMutation,
+  UpdateListColorMutation,
+} from "../operations";
+import { CARD_SORTS, CARD_SORT_LABELS, type CardSort } from "@/lib/card-sort";
 import { BRAND } from "@/brand";
 import { LIST_COLORS } from "@/lib/list-colors";
 import { SortableCard } from "./CardItem";
@@ -88,6 +96,18 @@ export function ListColumn({
   const [renameList] = useMutation(RenameListMutation);
   const [updateListColor] = useMutation(UpdateListColorMutation);
   const [archiveList] = useMutation(ArchiveListMutation);
+  const [sortList] = useMutation(SortListMutation);
+  // The sort options open in a second menu, at the same spot as the list menu.
+  const [sortAnchor, setSortAnchor] = useState<HTMLElement | null>(null);
+
+  const sortBy = (by: CardSort) => {
+    setSortAnchor(null);
+    run(
+      sortList({ variables: { id: list.id, by } }).then(() =>
+        notify(`Sorted by ${CARD_SORT_LABELS[by]}`, "success"),
+      ),
+    );
+  };
   const [deleteList, deleting] = useDeleteList();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const cardCount = list.cards.length;
@@ -143,6 +163,17 @@ export function ListColumn({
       </Stack>
       <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
         <MenuItem
+          disabled={list.cards.length < 2}
+          onClick={() => {
+            setSortAnchor(menuAnchor);
+            setMenuAnchor(null);
+          }}
+        >
+          <ListItemText>Sort Cards</ListItemText>
+          <ChevronRightIcon fontSize="small" sx={{ ml: 2, color: "text.secondary" }} />
+        </MenuItem>
+        <Divider />
+        <MenuItem
           onClick={() => {
             setMenuAnchor(null);
             run(archiveList({ variables: { id: list.id } }));
@@ -182,6 +213,21 @@ export function ListColumn({
             />
           </Box>
         </Box>
+      </Menu>
+      <Menu
+        anchorEl={sortAnchor}
+        open={!!sortAnchor}
+        onClose={() => setSortAnchor(null)}
+        slotProps={{ list: { "aria-label": `Sort cards in ${list.title}` } }}
+      >
+        <Typography variant="caption" color="text.secondary" component="li" sx={{ px: 2, pb: 0.5 }}>
+          Sort Cards by
+        </Typography>
+        {CARD_SORTS.map((by) => (
+          <MenuItem key={by} onClick={() => sortBy(by)}>
+            {CARD_SORT_LABELS[by]}
+          </MenuItem>
+        ))}
       </Menu>
       <ConfirmDelete
         open={confirmDelete}

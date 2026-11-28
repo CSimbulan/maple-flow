@@ -235,6 +235,17 @@ export const MoveListMutation = graphql(`
   }
 `);
 
+export const SortListMutation = graphql(`
+  mutation SortList($id: ID!, $by: CardSort!) {
+    sortList(id: $id, by: $by) {
+      id
+      cards {
+        ...CardFields
+      }
+    }
+  }
+`);
+
 export const ArchiveListMutation = graphql(`
   mutation ArchiveList($id: ID!) {
     archiveList(id: $id) {

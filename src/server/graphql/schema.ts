@@ -3,6 +3,7 @@ import type { Model, Types } from "mongoose";
 import { z } from "zod";
 import { defaultListColor } from "../../lib/list-colors";
 import { initialPositions, insertIndex, planInsert } from "../../lib/position";
+import { sortCards, type SortableCard } from "../../lib/card-sort";
 import { PRIORITIES } from "../../lib/priority";
 import { DEFAULT_TAGS } from "../../lib/tags";
 import {
@@ -96,6 +97,40 @@ async function cardDetailsSet(
   return $set;
 }
 
+/** What sortCards needs for each card: its fields plus comment counts and latest activity. */
+async function sortableCards(cards: CardDoc[]): Promise<(SortableCard & { doc: CardDoc })[]> {
+  const cardIds = cards.map((c) => c._id);
+  type Stats = { _id: Types.ObjectId; count: number; last: Date };
+  const [comments, activity] = await Promise.all([
+    CommentModel.aggregate<Stats>([
+      { $match: { cardId: { $in: cardIds } } },
+      { $group: { _id: "$cardId", count: { $sum: 1 }, last: { $max: "$createdAt" } } },
+    ]),
+    ActivityModel.aggregate<Stats>([
+      { $match: { cardId: { $in: cardIds } } },
+      { $group: { _id: "$cardId", count: { $sum: 1 }, last: { $max: "$createdAt" } } },
+    ]),
+  ]);
+  const byCard = (stats: Stats[]) => new Map(stats.map((s) => [s._id.toString(), s]));
+  const commentStats = byCard(comments);
+  const activityStats = byCard(activity);
+  return cards.map((doc) => {
+    const id = doc._id.toString();
+    const times = [doc.createdAt, commentStats.get(id)?.last, activityStats.get(id)?.last];
+    return {
+      doc,
+      title: doc.title,
+      priority: doc.priority ?? null,
+      createdAt: doc.createdAt,
+      // Editing, moving to another list or commenting; not dragging within a list.
+      lastUpdated: new Date(Math.max(...times.map((t) => t?.getTime() ?? 0))),
+      dueDate: doc.dueDate ?? null,
+      commentCount: commentStats.get(id)?.count ?? 0,
+      assigneeCount: doc.assigneeIds.length,
+    };
+  });
+}
+
 /** Fresh board doc, replacing whatever the loader cached earlier in this request. */
 async function reloadBoard(ctx: Context, boardId: string | Types.ObjectId): Promise<BoardDoc> {
   const id = boardId.toString();
@@ -152,6 +187,7 @@ export function buildSchema() {
     DeleteCardPayloadRef,
     DeleteListPayloadRef,
     PriorityEnum,
+    CardSortEnum,
   } = parts;
   defineTypes(parts);
   defineWorkspaceSchema(parts);
@@ -401,6 +437,36 @@ export function buildSchema() {
           );
           await ListModel.updateOne({ _id: list._id }, { $set: { position } });
           return reloadBoard(ctx, list.boardId);
+        },
+      }),
+      sortList: t.field({
+        type: ListRef,
+        description:
+          "Reorder a list's active cards once, for everyone. Cards can still be dragged " +
+          "afterwards. Not recorded in the cards' activity, like other reordering.",
+        args: {
+          id: t.arg.id({ required: true }),
+          by: t.arg({ type: CardSortEnum, required: true }),
+        },
+        resolve: async (_root, args, ctx) => {
+          const list = await requireList(ctx, args.id);
+          const cards = await CardModel.find({ listId: list._id, archived: false }).lean<
+            CardDoc[]
+          >();
+          const sorted = sortCards(await sortableCards(cards), args.by);
+          const positions = initialPositions(sorted.length);
+          if (sorted.length > 0) {
+            await CardModel.bulkWrite(
+              sorted.map((c, i) => ({
+                updateOne: {
+                  filter: { _id: c.doc._id },
+                  update: { $set: { position: positions[i] } },
+                },
+              })),
+            );
+          }
+          ctx.loaders.cardsByList.clear(list._id.toString());
+          return list;
         },
       }),
       archiveList: t.field({

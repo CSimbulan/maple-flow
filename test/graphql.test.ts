@@ -1212,3 +1212,74 @@ describe("comments and activity", () => {
     expect(await ActivityModel.countDocuments({})).toBe(0);
   });
 });
+
+describe("sorting a list", () => {
+  const SORT = `mutation ($id: ID!, $by: CardSort!) {
+    sortList(id: $id, by: $by) { cards { title } }
+  }`;
+  const sortedTitles = async (listId: string, by: string, userId = ann) =>
+    (await run(userId, SORT, { id: listId, by })).sortList.cards.map(
+      (c: { title: string }) => c.title,
+    );
+
+  it("reorders the cards once by priority, then creation date", async () => {
+    const board = await newBoard();
+    const todo = board.lists[0].id;
+    await addCards(ann, todo, ["None", "Low", "High 1", "High 2"]);
+    const set = (title: string, priority: string) =>
+      cardId(board.id, title).then((id) =>
+        run(ann, `mutation ($id: ID!, $p: Priority) { updateCard(id: $id, priority: $p) { id } }`, {
+          id,
+          p: priority,
+        }),
+      );
+    await set("Low", "LOW");
+    await set("High 1", "HIGH");
+    await set("High 2", "HIGH");
+
+    expect(await sortedTitles(todo, "PRIORITY")).toEqual(["High 1", "High 2", "Low", "None"]);
+    // Saved for everyone, and new cards still go to the bottom.
+    await addCards(ann, todo, ["Newest"]);
+    expect((await cardTitles(board.id))["To do"]).toEqual([
+      "High 1",
+      "High 2",
+      "Low",
+      "None",
+      "Newest",
+    ]);
+    expect(await sortedTitles(todo, "CREATED_NEWEST")).toEqual([
+      "Newest",
+      "High 2",
+      "High 1",
+      "Low",
+      "None",
+    ]);
+  });
+
+  it("sorts by latest activity or comment, and by comment count", async () => {
+    const board = await newBoard();
+    const todo = board.lists[0].id;
+    await addCards(ann, todo, ["A", "B", "C"]);
+    const comment = async (title: string) =>
+      run(ann, `mutation ($c: ID!) { addComment(cardId: $c, text: "Hi") { id } }`, {
+        c: await cardId(board.id, title),
+      });
+    await comment("A");
+    await comment("A");
+    await comment("B");
+    expect(await sortedTitles(todo, "UPDATED_NEWEST")).toEqual(["B", "A", "C"]);
+    expect(await sortedTitles(todo, "UPDATED_OLDEST")).toEqual(["C", "A", "B"]);
+    expect(await sortedTitles(todo, "MOST_COMMENTS")).toEqual(["A", "B", "C"]);
+  });
+
+  it("only lets board members sort, and ignores archived cards", async () => {
+    const board = await newBoard();
+    const todo = board.lists[0].id;
+    await addCards(ann, todo, ["b", "a", "c"]);
+    await run(ann, `mutation ($id: ID!) { archiveCard(id: $id) { id } }`, {
+      id: await cardId(board.id, "c"),
+    });
+    expect(await sortedTitles(todo, "TITLE")).toEqual(["a", "b"]);
+    expect(await errorCode(run(bob, SORT, { id: todo, by: "TITLE" }))).toBe("NOT_FOUND");
+  });
+});
