@@ -24,6 +24,7 @@ import { errorMessage, useNotify } from "../notify";
 import { AddBoardMemberMutation, RemoveBoardMemberMutation } from "../operations";
 import { useIsPhone } from "../useIsPhone";
 import { userInitial } from "./CardItem";
+import { blueOutlinedSx } from "../buttons";
 
 export function ShareDialog({ board, onClose }: { board: Board; onClose: () => void }) {
   const notify = useNotify();
@@ -125,8 +126,10 @@ export function ShareDialog({ board, onClose }: { board: Board; onClose: () => v
           </>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Done</Button>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button variant="outlined" onClick={onClose} sx={blueOutlinedSx}>
+          Exit
+        </Button>
       </DialogActions>
     </Dialog>
   );

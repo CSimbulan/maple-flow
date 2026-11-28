@@ -39,6 +39,7 @@ import {
 import { useIsPhone } from "../useIsPhone";
 import { ConfirmDelete } from "./ConfirmDelete";
 import { TagChip } from "./TagChip";
+import { blueOutlinedSx } from "../buttons";
 
 type ArchivedCard = NonNullable<ArchivedCardsData["board"]>["archivedCards"][number];
 type ArchivedList = NonNullable<ArchivedListsData["board"]>["archivedLists"][number];
@@ -65,8 +66,10 @@ export function ArchiveDialog({ board, onClose }: { board: Board; onClose: () =>
       <DialogContent sx={{ pt: "16px !important" }}>
         {tab === "cards" ? <ArchivedCards board={board} /> : <ArchivedLists board={board} />}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Done</Button>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button variant="outlined" onClick={onClose} sx={blueOutlinedSx}>
+          Exit
+        </Button>
       </DialogActions>
     </Dialog>
   );
