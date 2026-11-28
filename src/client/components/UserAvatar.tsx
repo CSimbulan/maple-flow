@@ -11,6 +11,13 @@ export function userInitial(u: { name: string | null; email: string }) {
 }
 
 /**
+ * Centers the capital letter itself rather than its line box. Without it, the line box is
+ * rounded to whole pixels, and at display scales like 125% the initial sits about a pixel high.
+ * Browsers without `text-box` (Firefox for now) keep the usual centering.
+ */
+export const CENTERED_INITIAL = { textBox: "trim-both cap alphabetic" } as const;
+
+/**
  * A person's avatar, the same everywhere: their photo, or a bold white initial on brand orange.
  * Sizes differ by place (24px on cards, 30px in the bars, 32px in comments, 40px in member
  * lists); the initial scales with it. `onBar` adds a white ring so the orange circle stands out
@@ -42,6 +49,7 @@ export function UserAvatar({
           fontWeight: 700,
           bgcolor: BRAND.orange,
           color: "#fff",
+          ...CENTERED_INITIAL,
         },
         onBar && { border: "2px solid #fff" },
         ...(Array.isArray(sx) ? sx : [sx]),

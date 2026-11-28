@@ -21,7 +21,13 @@ export const theme = createTheme({
     // UserAvatar. This also styles AvatarGroup's "+N" avatar.
     MuiAvatar: {
       styleOverrides: {
-        colorDefault: { backgroundColor: BRAND.orange, color: "#fff", fontWeight: 700 },
+        colorDefault: {
+          backgroundColor: BRAND.orange,
+          color: "#fff",
+          fontWeight: 700,
+          // Same optical centering as UserAvatar's initial (see CENTERED_INITIAL there).
+          textBox: "trim-both cap alphabetic",
+        },
       },
     },
   },
